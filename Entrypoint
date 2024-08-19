@@ -1,1 +1,376 @@
-bsnsnswsd
+ 
+import MedicalSection from './sections/medical'
+import MentalHealthSection from './sections/mentalHealth'
+import VisionSection from './sections/vision'
+import FitnessSection from './sections/fitness'
+import HomeSupportSection from './sections/homeSupportServices'
+import HearingIndividualSection from './sections/hearing/hearing'
+import HearingGroupRedesignSection from './sections/hearing/hearingGroupRedesign'
+import OtcSection from './sections/otc'
+import MealsIndividualSection from './sections/meals'
+import PersIndividualSection from './sections/pers'
+import PrescriptionDrugSection from './sections/prescriptionDrug'
+import { useBaseFontSize, StretchCenteredRow, abyssBreakpointsUpToMd } from '@uhc/react-common'
+import { pixelsToRem, adjustPixelOffset, colors } from '@uhc/common'
+import useBenefitsContext from '../../hooks/useBenefitsContext'
+import { hooks, useGlobalConfiguration } from '@uhc/mnr-ui-common'
+import useIsAbTestActive, { AbTest } from '../../hooks/useIsAbTestActive'
+import VisionGroupSection from './sections/vision/visionGroup'
+import HospitalServicesSection from './sections/medSupp/hospitalServicesPartA'
+import MedicalServicesSection from './sections/medSupp/medicalServicesPartB'
+import HospitalizationAndSkilledNursingSection from './sections/medSupp/hospitalServicesPartA/HospitalizationAndSkilledNursing'
+import DoctorVisitsSection from './sections/medSupp/medicalServicesPartB/DoctorVisits'
+import UrgentAndEmergencyCareSection from './sections/medSupp/medicalServicesPartB/UrgentAndEmergencyCare'
+import OutpatientCareSection from './sections/medSupp/medicalServicesPartB/OutpatientCare'
+import LabXRayServicesAndEquipmentSection from './sections/medSupp/medicalServicesPartB/LabXRayServicesAndEquipment'
+import DentalGroupSection from './sections/dental/dentalGroup'
+import IndividualMedicalSection from './sections/individualMedical'
+import DentalMcareSection from './sections/dental/dental-mcare'
+import RxSection from './sections/rx'
+import { MnrStickyNav } from '@uhc/mcare-react'
+import ChiropracticGroupSection from './sections/chiropractic/chiropracticGroupSection'
+import ChiropracticIndividualSection from './sections/chiropractic/chiropracticIndividualSection'
+import AcupunctureRoutineIndividualSection from './sections/acupuncture/acupunctureRoutineIndividualSection'
+import useDentalRidersMcare from '../../hooks/useDentalRidersMcare'
+import ExpensesNotCoveredSection from './sections/medSupp/expensesNotCovered'
+import TransportationIndividualSection from './sections/transportation/transportRoutineIndividualSection'
+import DiscountServicesSection from './sections/medSupp/discountServices'
+import { useFlags } from 'launchdarkly-react-client-sdk'
+import { PlanDeductibleSection } from './sections/medSupp/planDeductible'
+
+const { useGlobalContext } = hooks
+const BenefitsSummaryMainContent = () => {
+  const config = useGlobalConfiguration()
+  const { isPDP, isMA, isGroupPlan, isStandaloneSSP, isUnivOfKy, isSSP } = useGlobalContext()
+  const { isFastQueryLoading, isSlowQueryLoading, isMedSuppELE, isLifeMartOnlyEligible, benefits, isMedSupp, medSupp } =
+    useBenefitsContext()
+  const baseFontSize = useBaseFontSize()
+  const hasMeals = benefits?.meals?.title || benefits?.mealsBeyondLimited?.title
+  const hasPers = benefits?.pers?.title
+  const hasFitness = isGroupPlan ? benefits?.fitness : benefits?.fitness?.title
+  const homeSupportTitle = benefits?.homeSupportServices?.title
+  const hasOtc = benefits?.otc?.title || benefits?.otc?.title
+  const hasTransportationIndividual =
+    benefits?.medicalRoutineTransportation?.title && config?.featureFlags?.includes('SHOW_ROUTINE_TRANSPORTATION')
+  const hasChiropracticIndividual = benefits?.medicalChiropracticRoutineVisits?.title
+  const hasAcupunctureRoutineIndividual = benefits?.medicalAcupuncture?.title
+  const hideHearingSectionGroup = isGroupPlan && benefits?.hearingAids?.title?.toLowerCase() === 'true'
+  const { showRiders } = useDentalRidersMcare()
+  const isMedicareCoveredDental = benefits?.comprehensiveDentalMedicareCovered?.title
+  const hasMcareDentalBenefit =
+    benefits?.comprehensiveDental?.title || benefits?.preventativeDental?.title || showRiders || isMedicareCoveredDental
+  const enableChiropracticgroup = !!benefits?.chiropracticRoutineVisits
+  const hideHearing =
+    !benefits ||
+    !benefits?.hearingAids ||
+    !benefits?.hearingExam ||
+    !Object.values(benefits.hearingAids).some((x) => x !== null && x !== '') ||
+    !Object.values(benefits.hearingExam).some((x) => x !== null && x !== '')
+
+  const stateCode = medSupp?.plan?.stateCode
+
+  const hasEligibleState = stateCode === 'MA' || stateCode === 'MN' || stateCode === 'WI'
+
+  const discountServicesTitle = medSupp?.benefits?.discountServices?.title
+
+  //  temporary for testing the Lifemart feature
+  const { showLifemartVasBenefit, goToPsxRouter } = useFlags()
+  const showDiscountServices = isLifeMartOnlyEligible ? showLifemartVasBenefit : isMedSuppELE
+
+  const medSuppNavSections = [
+    {
+      CoverageType: 'Plan Deductible',
+      title: 'Plan Deductible',
+      key: 'planDeductible',
+      children: <PlanDeductibleSection />,
+      isHidden: !isMedSupp || !medSupp?.benefits?.annualPlanDeductible?.title,
+    },
+    {
+      coverageType: 'Part A hospital services',
+      title: 'Part A hospital services',
+      key: 'hospitalServices',
+      children: (
+        <>
+          <HospitalServicesSection />
+        </>
+      ),
+      isHidden: !isMedSupp,
+      subSections: [
+        {
+          coverageType: 'Hospitalization & skilled nursing facility care',
+          title: 'Hospitalization & skilled nursing facility care',
+          key: 'hospitalAndSkilledNursing',
+          children: (
+            <>
+              <HospitalizationAndSkilledNursingSection />
+            </>
+          ),
+          isHidden: !isMedSupp,
+        },
+      ],
+    },
+    {
+      coverageType: 'Part B medical services',
+      title: 'Part B medical services',
+      key: 'medicalServices',
+      children: (
+        <>
+          <MedicalServicesSection />
+        </>
+      ),
+      isHidden: !isMedSupp,
+      subSections: [
+        {
+          coverageType: 'Doctor visits',
+          title: 'Doctor visits',
+          key: 'doctorVisits',
+          children: (
+            <>
+              <DoctorVisitsSection />
+            </>
+          ),
+          isHidden: !isMedSupp,
+        },
+        {
+          coverageType: 'Urgent & emergency care',
+          title: 'Urgent & emergency care',
+          key: 'urgentAndEmergencyCare',
+          children: (
+            <>
+              <UrgentAndEmergencyCareSection />
+            </>
+          ),
+          isHidden: !isMedSupp,
+        },
+        {
+          coverageType: 'Outpatient care',
+          title: 'Outpatient care',
+          key: 'outpatientCare',
+          children: (
+            <>
+              <OutpatientCareSection />
+            </>
+          ),
+          isHidden: !isMedSupp,
+        },
+        {
+          coverageType: 'Lab x-ray services and equipment',
+          title: 'Lab x-ray services & equipment',
+          key: 'labXRayServicesAndEquipment',
+          children: (
+            <>
+              <LabXRayServicesAndEquipmentSection />
+            </>
+          ),
+          isHidden: !isMedSupp,
+        },
+      ],
+    },
+    {
+      coverageType: 'Expenses not covered by Medicare',
+      title: 'Expenses not covered by Medicare',
+      key: 'expensesNotCoveredbyMedicare',
+      children: (
+        <>
+          <ExpensesNotCoveredSection />
+        </>
+      ),
+      isHidden: !isMedSupp || !hasEligibleState,
+    },
+    {
+      coverageType: discountServicesTitle,
+      title: discountServicesTitle,
+      key: 'discountServices',
+      children: (
+        <>
+          <DiscountServicesSection />
+        </>
+      ),
+      isHidden: !isMedSupp || !showDiscountServices,
+    },
+  ]
+
+  const medNavSections = [
+    {
+      coverageType: 'Medical',
+      title: 'Medical',
+      key: 'medical',
+      children: !isGroupPlan ? <IndividualMedicalSection /> : <MedicalSection />,
+      isHidden: isPDP || isMedSupp,
+    },
+    {
+      coverageType: 'PrescriptionDrug',
+      title: 'Prescription drug',
+      key: 'rx',
+      children: !isGroupPlan ? <RxSection /> : <PrescriptionDrugSection />,
+      isHidden: (isMA || isMedSupp || isStandaloneSSP || (!isStandaloneSSP && isSSP)) && !isUnivOfKy,
+    },
+    {
+      coverageType: 'MentalHealth',
+      title: 'Mental and behavioral health',
+      key: 'mental-health',
+      children: <MentalHealthSection />,
+      isHidden: isPDP || isMedSupp || !isGroupPlan || (isGroupPlan && !benefits?.medicalInpatientMentalHealth),
+    },
+    {
+      coverageType: 'Dental',
+      title: 'Dental',
+      key: 'dental',
+      children: <DentalMcareSection goToIngress={!!goToPsxRouter} />,
+      isHidden: isPDP || isMedSupp || isGroupPlan || !hasMcareDentalBenefit,
+    },
+    {
+      coverageType: 'Dental',
+      title: 'Dental',
+      key: 'dental-group',
+      children: <DentalGroupSection />,
+      isHidden: isPDP || !isGroupPlan || isMedSupp || !benefits?.dental,
+    },
+
+    {
+      coverageType: 'Vision',
+      title: 'Vision',
+      key: 'vision',
+      children: <VisionSection goToIngress={!!goToPsxRouter} />,
+      isHidden: isPDP || isGroupPlan || isMedSupp,
+    },
+    {
+      coverageType: 'Vision',
+      title: 'Vision',
+      key: 'vision-group',
+      children: <VisionGroupSection />,
+      isHidden:
+        isPDP ||
+        !isGroupPlan ||
+        isMedSupp ||
+        (!benefits?.eyeExam && !benefits?.eyeglassesAllowance && !benefits?.eyewear),
+    },
+    {
+      coverageType: 'Hearing',
+      title: 'Hearing',
+      key: 'hearing',
+      children: isGroupPlan ? <HearingGroupRedesignSection /> : <HearingIndividualSection />,
+      isHidden: isPDP || isMedSupp || hideHearingSectionGroup || hideHearing,
+    },
+    {
+      coverageType: 'Fitness',
+      title: 'Fitness',
+      key: 'fitness',
+      children: <FitnessSection />,
+      isHidden: isPDP || !hasFitness || isMedSupp,
+    },
+    // we no longer have the flex benefit as of 2024
+    // {
+    //   coverageType: 'Flex',
+    //   title: flexTitle,
+    //   key: 'flex',
+    //   children: <FlexSection />,
+    //   isHidden: !flexTitle,
+    // },
+    {
+      coverageType: 'OverTheCounter',
+      title: 'Over-the-counter (OTC) benefit',
+      key: 'otc',
+      children: <OtcSection />,
+      isHidden: isPDP || !hasOtc || isMedSupp,
+    },
+    {
+      coverageType: 'Transportation',
+      title: 'Routine transportation',
+      key: 'routine-transportation',
+      children: <TransportationIndividualSection />,
+      isHidden: isPDP || isGroupPlan || isMedSupp || !hasTransportationIndividual,
+    },
+    {
+      coverageType: 'Chiropractic',
+      title: 'Routine chiropractic services',
+      key: 'routine-chiropractic-services',
+      children: <ChiropracticIndividualSection />,
+      isHidden: isPDP || isGroupPlan || isMedSupp || !hasChiropracticIndividual,
+    },
+    {
+      coverageType: 'Chiropractic',
+      title: 'Chiropractic',
+      key: 'chiropractic-group',
+      children: <ChiropracticGroupSection />,
+      isHidden: isPDP || !isGroupPlan || isMedSupp || !enableChiropracticgroup,
+    },
+    {
+      coverageType: 'AcupunctureRoutine',
+      title: 'Routine acupuncture',
+      key: 'routine-Acupuncture-services',
+      children: <AcupunctureRoutineIndividualSection />,
+      isHidden: isPDP || isGroupPlan || isMedSupp || !hasAcupunctureRoutineIndividual,
+    },
+    {
+      coverageType: 'Pers',
+      title: 'Personal Emergency Response System (PERS)',
+      key: 'pers',
+      children: <PersIndividualSection />,
+      isHidden: !hasPers || isGroupPlan || isMedSupp,
+    },
+    {
+      coverageType: 'Meals',
+      title: 'Meals',
+      key: 'meals',
+      children: <MealsIndividualSection />,
+      isHidden: !hasMeals || isMedSupp || isGroupPlan,
+    },
+    {
+      coverageType: 'HomeSupport',
+      title: homeSupportTitle,
+      key: 'homeSupport',
+      children: <HomeSupportSection />,
+      isHidden: !homeSupportTitle,
+    },
+  ]
+
+  let navSections = [...medSuppNavSections, ...medNavSections]
+
+  const isSideNavReorderAb = useIsAbTestActive(AbTest.SideNavReorder)
+  if (isSideNavReorderAb) {
+    navSections = [
+      'medical',
+      'medicalGroup',
+      'rx',
+      'dental-legacy',
+      'dental',
+      'dental-mcare',
+      'otc',
+      'chiropractic-group',
+      'vision',
+      'vision-group',
+      'mental-health',
+      'hearing',
+      'fitness',
+      'pers',
+      'meals',
+    ].map((key) => navSections.find((section) => section.key === key))
+  }
+
+  return (
+    <StretchCenteredRow
+      css={`
+        padding: 2.5rem 1.5rem 0;
+        ${abyssBreakpointsUpToMd} {
+          padding-top: 2rem;
+        }
+        border-top: ${pixelsToRem(1)} solid ${colors.gray4};
+      `}>
+      <MnrStickyNav
+        showPlaceholder={isFastQueryLoading || isMedSupp === undefined}
+        // don't prerender / render sections below the fold until page loaded.
+        navSections={
+          isFastQueryLoading || isMedSupp === undefined ? [navSections[0]] : navSections.filter((x) => !x.isHidden)
+        }
+        placeholderNavSections={navSections}
+        topOffsetPx={adjustPixelOffset(68, baseFontSize)}
+        isPDP={isPDP}
+        isSlowQueryLoading={isSlowQueryLoading}
+        hideNavLinksAndLeftAlign={isPDP}
+      />
+    </StretchCenteredRow>
+  )
+}
+
+export default BenefitsSummaryMainContent
