@@ -1,0 +1,487 @@
+import { Fragment } from 'react'
+import styled from 'styled-components'
+import {
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+  P,
+  Ol,
+  DollarValue,
+  ExtraHelpLevelText,
+  OneMonthSupplyContent,
+} from '../Typography/Typography'
+import Button from '../Button/Button'
+import { TooltipTitle } from '../Tooltip/Tooltip'
+import { stringify } from '../../utils/stringify'
+import { NextTempoLink, NextTempoLinkProps, TempoLink, TempoLinkProps } from '../Links'
+
+const FlexDiv = styled.div`
+  display: flex;
+  align-items: baseline;
+  margin-top: 0.75rem;
+`
+
+const MarginListItem = styled.li`
+  margin-bottom: 1rem;
+`
+
+let relativeLinkStrategy = (url) => url
+
+export const setRelativeLinkStrategy = (strategy: (string) => string) => (relativeLinkStrategy = strategy)
+
+const addClasses = (attrs, ...classes) => {
+  classes = classes.flat()
+  attrs ??= {}
+  const existing = attrs.className?.split(' ') ?? []
+  attrs.className = Array.from(new Set([...existing, ...classes])).join(' ')
+  return attrs
+}
+
+export const RichTextComponentMap = {
+  'block-quote': ({ attributes, children }) => <blockquote {...attributes}>{children}</blockquote>,
+  'bulleted-list': ({ attributes, children, ariaLabel }) => (
+    <ul aria-labelledby={ariaLabel} {...attributes}>
+      {children}
+    </ul>
+  ),
+  div: ({ attributes, children }) => <div {...attributes}>{children}</div>,
+  span: ({ attributes, children }) => <span {...attributes}>{children}</span>,
+  em: ({ attributes, children }) => <em {...attributes}>{children}</em>,
+  'internal-dollar-value': ({ v1, attributes, children }) =>
+    v1 ? (
+      <span className="OneLinkNoTx dollar-value" {...attributes}>
+        {children}
+      </span>
+    ) : (
+      <DollarValue
+        css={`
+          display: block;
+        `}
+        {...attributes}>
+        {children}
+      </DollarValue>
+    ),
+  'extra-help-level': ({ attributes, children }) => (
+    <ExtraHelpLevelText data-test-id="summary__extra-help-lis-level" {...attributes} as="span">
+      {children}
+    </ExtraHelpLevelText>
+  ),
+  'heading-one': ({ attributes, children }) => <H1 {...attributes}>{children}</H1>,
+  'heading-two': ({ attributes, children }) => <H2 {...attributes}>{children}</H2>,
+  'heading-three': ({ attributes, children }) => <H3 {...attributes}>{children}</H3>,
+  'heading-four': ({ attributes, children }) => <H4 {...attributes}>{children}</H4>,
+  'heading-five': ({ attributes, children }) => <H5 {...attributes}>{children}</H5>,
+  'heading-six': ({ attributes, children }) => <H6 {...attributes}>{children}</H6>,
+  'list-item': ({ v1, attributes, children }) =>
+    v1 ? <li {...attributes}>{children}</li> : <MarginListItem {...attributes}>{children}</MarginListItem>,
+  'numbered-list': ({ attributes, children }) => <Ol {...attributes}>{children}</Ol>,
+  u: ({ attributes, children }) => <u {...attributes}>{children}</u>,
+  strong: ({ attributes, children }) => <strong {...attributes}>{children}</strong>,
+  br: ({ attributes }) => <br {...attributes} />,
+  paragraph: ({ attributes, children }) => <P {...attributes}>{children}</P>,
+  'dollar-value': (props) => {
+    const { children, index, isLoading, isDental } = props
+    const attributes = addClasses(props.attributes, isLoading ? 'placeholder dollar-value' : 'dollar-value')
+    return (
+      <DollarValue
+        css={`
+          display: block;
+        `}
+        as="span"
+        {...attributes}
+        style={{ ...attributes?.style, ...(index > 0 && !isDental ? { marginTop: '.5rem' } : {}) }}>
+        {children}
+        {isLoading ? '$X,XXX' : null}
+      </DollarValue>
+    )
+  },
+  'inline-dollar-value': (props) => {
+    const { children, index, isLoading, isDental } = props
+    const attributes = addClasses(props.attributes, isLoading ? 'placeholder dollar-value' : 'dollar-value')
+
+    return (
+      <DollarValue
+        css={`
+          display: inline;
+        `}
+        as="span"
+        {...attributes}
+        style={{ ...attributes?.style, ...(index > 0 && !isDental ? { marginTop: '.5rem' } : {}) }}>
+        {children}
+        {isLoading ? '$X,XXX' : null}
+      </DollarValue>
+    )
+  },
+  'dollar-range': ({ attributes, children, index, isLoading }) => (
+    <DollarValue
+      className={isLoading ? 'placeholder dollar-value' : 'dollar-value'}
+      css={`
+        display: block;
+      `}
+      as="span"
+      {...attributes}
+      style={{ ...attributes?.style, ...(index > 0 ? { marginTop: '.5rem' } : {}) }}>
+      {children}
+      {isLoading ? '$X,XXX' : null}
+    </DollarValue>
+  ),
+  'one-month-supply-content': ({ attributes, children }) => (
+    <OneMonthSupplyContent
+      className="one-month-supply-content"
+      data-test-id="summary__one-month-supply-content"
+      {...attributes}
+      as="span">
+      {children}
+    </OneMonthSupplyContent>
+  ),
+  'multi-value-ambulance': ({ children }) => {
+    const childrenArray = children as any[]
+    const dollarValues = childrenArray
+      .filter((child) => child?.props?.children?.props?.node?.type === 'internal-dollar-value')
+      .map((child) => child?.props?.children?.props?.node.children?.[0]?.text)
+
+    const MultiValue = ({ val1, val2, label }: { val1: string; val2: string; label: string }) => (
+      <>
+        <FlexDiv>
+          <H1 as={'span'} css={'margin-right: 0.75rem'}>
+            {val1}
+          </H1>
+          <P>or</P>
+          <H1 as={'span'} css={'margin-left: 0.75rem'}>
+            {val2}
+          </H1>
+        </FlexDiv>
+        <P>Copay or coinsurance for {label}</P>{' '}
+      </>
+    )
+
+    return (
+      <>
+        <MultiValue val1={dollarValues?.[0]} val2={dollarValues?.[1]} label="ground" />
+        {dollarValues?.length > 3 && <MultiValue val1={dollarValues?.[2]} val2={dollarValues?.[3]} label="air" />}
+      </>
+    )
+  },
+  text: ({ children, ...rest }) => {
+    if (rest.style) {
+      console.log(rest.style)
+    }
+    return (
+      <span
+        {...rest}
+        css={`
+          display: block;
+        `}>
+        {children}
+      </span>
+    )
+  },
+  'tooltip-title': ({ attributes }) => <TooltipTitle {...attributes} />,
+  'eoc-link': ({ children, url = '', ...rest }) => (
+    <TempoLink
+      onClickTrackingData={{
+        clickName: 'content-managed-link',
+        clickType: 'exit',
+        clickElement: 'link',
+        clickDestination: url,
+      }}
+      onClick={() => {}}
+      externalLink
+      href={url}
+      {...rest}>
+      {children}
+    </TempoLink>
+  ),
+  button: ({ url, children, ...rest }) => (
+    <Button
+      externalLink
+      href={url}
+      onClickTrackingData={{
+        clickName: url,
+        clickType: 'exit',
+        clickElement: 'button',
+        clickDestination: url,
+      }}
+      {...rest}>
+      {children}
+    </Button>
+  ),
+
+  'sr-only-span': ({ attributes, children }) => (
+    <span
+      style={{
+        position: 'absolute',
+        height: '1px',
+        width: '1px',
+        clip: 'rect(1px, 1px, 1px, 1px)',
+        clipPath: 'polygon(0px 0px, 0px 0px, 0px 0px)',
+        overflow: 'hidden !important',
+      }}
+      {...attributes}>
+      {children}
+    </span>
+  ),
+  'line-break': () => <br />,
+  link: ({
+    children,
+    clickElement = 'link',
+    clickName = 'content-managed-link',
+    clickType = 'exit',
+    forceRelative = false,
+    hasExitModal,
+    nextLink = false,
+    noIcon = false,
+    underline = false,
+    url,
+    v1,
+    ...rest
+  }) => {
+    // hash route to benefits means it's a benefits SPA link
+    const benefitsLinkPath = /benefits-coverage\.html#\/(.*)/.exec(url)?.[1]
+    if (benefitsLinkPath) {
+      return (
+        <NextTempoLink href={`/${benefitsLinkPath}`} {...rest}>
+          {children}
+        </NextTempoLink>
+      )
+    }
+
+    let externalLink = true
+    let href = url
+
+    if (v1) {
+      const isRelativeLink = url?.startsWith('/') || forceRelative
+      externalLink = hasExitModal ? true : !isRelativeLink
+      href = isRelativeLink ? relativeLinkStrategy(url) : href
+    }
+
+    const props: NextTempoLinkProps | TempoLinkProps = {
+      onClickTrackingData: {
+        clickName: clickName ? clickName : 'content-managed-link',
+        clickType: clickType,
+        clickElement: clickElement,
+        clickDestination: url,
+      },
+      onClick: () => {},
+      externalLink: externalLink,
+      href: href,
+      noIcon: noIcon,
+      css: underline && 'text-decoration: underline',
+      hasExitModal,
+      children,
+      ...rest,
+    }
+
+    return nextLink ? <NextTempoLink {...props} /> : <TempoLink {...props} />
+  },
+}
+
+const ELEMENT_NODES = [
+  'block-quote',
+  'br',
+  'bulleted-list',
+  'div',
+  'em',
+  'heading-five',
+  'heading-four',
+  'heading-one',
+  'heading-six',
+  'heading-three',
+  'heading-two',
+  'internal-dollar-value',
+  'extra-help-level',
+  'link',
+  'list-item',
+  'numbered-list',
+  'paragraph',
+  'strong',
+  'u',
+  'span',
+  'tooltip-title',
+  'text',
+  'dollar-value',
+  'inline-dollar-value',
+  'one-month-supply-content',
+  'dollar-range',
+  'eoc-link',
+  'multi-value-ambulance',
+  'sr-only-span',
+  'button',
+  'line-break',
+]
+
+const isElement = (node) => ELEMENT_NODES.some((e) => e === node?.type)
+
+const LeafWrap = (props) => {
+  let { attributes, children } = props
+  if (props.bold) {
+    children = <strong>{children}</strong>
+  }
+
+  if (props.code) {
+    children = <code>{children}</code>
+  }
+
+  if (props.italic) {
+    children = <em>{children}</em>
+  }
+
+  if (props.underline) {
+    children = <u>{children}</u>
+  }
+
+  const valuesRegex = /\d+%|\$\d+|\d+\/\d+\/\d+/g
+  const visionEyewearDisclaimerValuesRegex = /^((?![$]\d{1,3}\s[-]\s[$]\d{1,3}).)*$/g
+  // need to stringify children so when the regex is checked, and it's not a string, the app doesn't crash
+  const childrenStr = typeof children === 'string' ? children : stringify(children)
+  const noOneLinkClass =
+    valuesRegex.test(childrenStr) && visionEyewearDisclaimerValuesRegex.test(childrenStr) ? 'OneLinkNoTx' : '' // don't translate dollar, percentage or dates
+
+  return props.v1 ? (
+    // v1
+    <span className={noOneLinkClass} {...attributes}>
+      {children}
+    </span>
+  ) : (
+    // v2
+    <span
+      css={`
+        ${!props.noLineBreaks && `display: block;`}
+      `}
+      {...attributes}>
+      {children}
+    </span>
+  )
+}
+
+const RichTextFragment = (props) => <LeafWrap {...props}>{props.text}</LeafWrap>
+
+const fancierNodes = (nodes) => {
+  const dashConfig = {
+    exists: false,
+    atIndex: null,
+  }
+
+  nodes?.forEach((node, i) => {
+    const start = node
+    const dash = nodes[i + 1]
+    const end = nodes[i + 2]
+
+    const foundDollarRange = start?.type === 'dollar-value' && dash?.text === '-' && end?.type === 'dollar-value'
+    const foundSectionBreak = node?.text === '[sectionbreak]'
+
+    if (!foundDollarRange && !foundSectionBreak) return node
+
+    if (foundDollarRange) {
+      start.attributes = addClasses(start.attributes, 'start')
+
+      dash.attributes = addClasses({ 'aria-hidden': true, ...dash.attributes }, 'dash')
+      dashConfig.atIndex = i + 1
+      dashConfig.exists = true
+
+      end.attributes = addClasses(end.attributes, 'end')
+    }
+    if (foundSectionBreak) {
+      node.attributes = addClasses({ 'aria-hidden': true, ...node.attributes }, 'section-break')
+    }
+  })
+
+  // insert a visually hidden element that the screen reader will announce but isn't seen
+  if (dashConfig.exists) {
+    nodes.splice(dashConfig.atIndex, 0, {
+      type: 'sr-only-span',
+      children: [{ text: 'to' }],
+    })
+  }
+
+  return nodes
+}
+
+type RichTextNodeProps = {
+  node: any
+  noLineBreaks?: boolean
+  appendedElement?: JSX.Element | JSX.Element[]
+  coveredText?: boolean
+  ariaLabel?: string
+  v1?: boolean
+}
+
+export const RichTextNode = (props: RichTextNodeProps) => {
+  const { node, appendedElement, coveredText } = props
+
+  const isElementNode = isElement(node)
+  let Component
+  if (isElementNode) {
+    Component = RichTextComponentMap[node.type] || P
+  } else {
+    Component = RichTextFragment
+  }
+
+  const { children = [] } = node
+
+  return (
+    <>
+      <Component {...props} {...node}>
+        {fancierNodes(children)?.map((child, idx) => {
+          return (
+            // eslint-disable-next-line react/no-array-index-key
+            <Fragment key={idx}>
+              {coveredText ? (
+                <span
+                  css={`
+                    font-size: 1.25rem;
+                  `}>
+                  <RichTextNode {...props} node={{ ...child, index: idx }} />
+                </span>
+              ) : (
+                <RichTextNode {...props} node={{ ...child, index: idx }} />
+              )}
+            </Fragment>
+          )
+        })}
+        {appendedElement}
+      </Component>
+    </>
+  )
+}
+
+export type RichTextProps = {
+  richTextTree: any
+  noLineBreaks?: boolean
+  appendedElement?: JSX.Element | JSX.Element[]
+  coveredText?: boolean
+  className?: string
+  ariaLabel?: string
+  v1?: boolean
+}
+
+export const RichText = ({
+  richTextTree,
+  noLineBreaks,
+  appendedElement,
+  coveredText,
+  ariaLabel,
+  v1,
+}: RichTextProps) => {
+  const isDental = richTextTree?.length === 3
+  const treeArray = typeof richTextTree === 'string' ? JSON.parse(richTextTree || '[]') : richTextTree
+
+  return (
+    treeArray?.map((node, idx) => (
+      // eslint-disable-next-line react/no-array-index-key
+      <Fragment key={idx}>
+        <RichTextNode
+          coveredText={coveredText}
+          node={{ ...node, index: idx, isDental: isDental }}
+          noLineBreaks={noLineBreaks}
+          appendedElement={appendedElement}
+          ariaLabel={ariaLabel}
+          v1={v1}
+        />
+      </Fragment>
+    )) || null
+  )
+}
