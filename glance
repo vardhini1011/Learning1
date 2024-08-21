@@ -1,0 +1,502 @@
+import {
+  Col,
+  FloatingSplitCard,
+  formatCurrency,
+  H4,
+  H6,
+  Tooltip,
+  P,
+  Row,
+  StretchCenteredRow,
+  fontWeightBold,
+  fontFamilySans,
+  LabelValueList,
+  abyssBreakpointsMd,
+  LabelValueListItem,
+  TempoLink,
+  fontWeightSemibold,
+  RichText,
+} from '@uhc/react-common'
+import { CheckmarkCircleSvg } from '@uhc/icons'
+import { pixelsToRem, colors } from '@uhc/common'
+import dayjs from 'dayjs'
+import useBenefitsContext from '../../hooks/useBenefitsContext'
+import {
+  DualStatusIndicator,
+  ExtraHelpTooltip,
+  MonthlyPremiumTooltip,
+  NationalNetworkTooltip,
+  PlanSummaryError,
+  Tooltips,
+} from '@uhc/mcare-react'
+import usePlanSummaryErrors from './useAtAGlanceErrors'
+import { useGlobalContext } from '@uhc/mnr-ui-common'
+import { useFlags } from 'launchdarkly-react-client-sdk'
+
+const { PdpMonthlyPremiumTooltip } = Tooltips
+
+export const LightHeader = (props) => {
+  const { children, ...rest } = props
+  return (
+    <H4
+      {...rest}
+      as="h2"
+      spacingBottom
+      css={`
+        font-weight: 100;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        font-family: EnterpriseSansVF;
+      `}>
+      {children}
+    </H4>
+  )
+}
+
+export const ValueTitle = (props) => (
+  <P
+    css={`
+      color: ${colors.gray6};
+      margin-bottom: ${pixelsToRem(8)};
+      font-weight: ${fontWeightSemibold};
+    `}>
+    {props.children}
+  </P>
+)
+
+const PlanSummaryCard = () => {
+  const {
+    planSummary,
+    planTypeDescription,
+    isFastQueryLoading,
+    isSlowQueryLoading,
+    member,
+    medicaidDualStatusCode,
+    benefits,
+  } = useBenefitsContext()
+
+  const { isGroupPlan, isPreEffective } = useGlobalContext()
+  const { forcePreEffectivePremium } = useFlags()
+  const lisLevel = isNaN(+planSummary?.lisLevel) || +planSummary?.lisLevel <= 0 ? null : planSummary?.lisLevel
+
+  // TODO - remove after 01/01
+  const year = isGroupPlan
+    ? `${new Date().getFullYear()}`.includes('2024')
+    : `${planSummary?.startDate}`.includes('2024')
+
+  const lisLevelValue = lisLevel === 4 && year ? 1 : lisLevel
+  const isPDP = planSummary?.planCategory === 'PDP'
+  const memberName = `${member?.firstName || ''} ${member?.middleName || ''} ${member?.lastName || ''}`.trim()
+  const { yourPlanError, memberSectionError } = usePlanSummaryErrors()
+  const { nationalNetworkIndicator, brandingName } = planSummary || {}
+
+  const breakString = (brandName: string) => {
+    if (!brandName) return
+    const brandNames = brandName.split('(')
+    brandNames[1] = `(${brandNames[1]}`
+    return brandNames
+  }
+
+  const brandNameParts = breakString(brandingName)
+  const showNationalNetwork = nationalNetworkIndicator === true && isGroupPlan === false
+
+  const startDate = isGroupPlan
+    ? dayjs.utc(planSummary?.startDate).format('MM/DD/YYYY')
+    : dayjs.utc(planSummary?.startDate).format('M/D/YYYY')
+
+  const endDate = dayjs.utc(planSummary?.endDate).format('M/D/YYYY')
+  const coverageDateString = `${startDate}-${endDate}`
+  const brandingSubName = planSummary?.planCategoryName
+  const premiumPaymentLink = '/medicare/payments#/'
+  const hasPremiumPayments = planSummary?.premiumPayment === 'true'
+  const premium = planSummary?.premium
+  const hasPremium = premium === 0 || !!premium
+
+  return (
+    <>
+      <StretchCenteredRow
+        css={`
+          padding: 0;
+        `}>
+        {!yourPlanError && (
+          <FloatingSplitCard
+            css={`
+              margin-top: 0;
+              padding: 1rem;
+              ${abyssBreakpointsMd} {
+                padding: 2rem;
+              }
+              min-height: 7.1825rem;
+              flex-direction: column;
+              flex-wrap: wrap;
+              margin-bottom: 2rem;
+            `}>
+            {!isGroupPlan ? (
+              <Row
+                breakpoint={'abyssBreakpointsMd'}
+                css={`
+                  border-right: 0;
+                  border-bottom: 0;
+                `}>
+                <Col
+                  css={`
+                    border-right: 0;
+                    flex: 1.25;
+                  `}>
+                  <Row
+                    css={`
+                      padding-bottom: 0.5rem;
+                    `}>
+                    {brandingName ? (
+                      brandingName.length < 50 ? (
+                        <H4 as="h2" data-test-id={'summary__your-plan'} className={!brandingName ? 'placeholder' : ''}>
+                          {brandingName || 'XXX XXXXXXX XXXXXXXXXX XXXXXXXX'}
+                          {Array.isArray(planTypeDescription) && (
+                            <ShowToolTip planTypeDescription={planTypeDescription} />
+                          )}
+                        </H4>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <H4
+                            as="h2"
+                            data-test-id={'summary__your-plan'}
+                            className={!brandingName ? 'placeholder' : ''}>
+                            {brandNameParts[0] || 'XXX XXXXXXX XXXXXXXXXX XXXXXXXX'}
+                          </H4>
+                          <H4
+                            as="h2"
+                            data-test-id={'summary__your-plan'}
+                            className={!brandingName ? 'placeholder' : ''}>
+                            {brandNameParts[1] || 'XXX XXXXXXX XXXXXXXXXX XXXXXXXX'}
+                            {Array.isArray(planTypeDescription) && (
+                              <ShowToolTip planTypeDescription={planTypeDescription} />
+                            )}
+                          </H4>
+                        </div>
+                      )
+                    ) : (
+                      <H4 as="h2" data-test-id={'summary__your-plan'} className={!brandingName ? 'placeholder' : ''}>
+                        XXX XXXXXXX XXXXXXXXXX XXXXXXXX
+                      </H4>
+                    )}
+                  </Row>
+                  <Row
+                    css={`
+                      padding-bottom: 0.5rem;
+                    `}>
+                    {showNationalNetwork && (
+                      <div
+                        data-test-id="summary__national-network"
+                        css={`
+                          margin: 0;
+                        `}>
+                        <CheckmarkCircleSvg
+                          css={`
+                            top: -0.1rem;
+                            left: -0.4rem;
+                            position: relative;
+                            margin-right: 0.2rem;
+                          `}
+                        />
+                        Medicare National Network Access hi
+                        <Tooltip
+                          aria-label="More Info about Medicare National Network Access"
+                          clickName="medicare-national-network-access"
+                          contentTitle="Medicare National Network Access"
+                          contentText={<NationalNetworkTooltip />}
+                          customTopOffset={1.8}
+                        />
+                      </div>
+                    )}
+                    {/* 61% of members have this type so show a placeholder */}
+                    {nationalNetworkIndicator === undefined && (
+                      <P className={'placeholder'}>XXXXXXXX XXXXXXXX XXXXXXX XXXXXX</P>
+                    )}
+                  </Row>
+                  <Row>
+                    <Col
+                      css={`
+                        padding-right: 1.26rem;
+                      `}>
+                      {hasPremium && (!isPreEffective || forcePreEffectivePremium) && (
+                        <div className={premium === null ? 'placeholder' : ''}>
+                          Monthly Premium&nbsp;
+                          <span
+                            data-test-id="summary__monthly-premium"
+                            css={`
+                              color: ${colors.gray7};
+                              font-weight: ${fontWeightBold};
+                            `}>
+                            {formatCurrency(premium)}
+                          </span>
+                          {premium === null ? (
+                            <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                          ) : (
+                            <Tooltip
+                              aria-label="More Info about your monthly premium"
+                              contentTitle="Monthly Premium"
+                              clickName="monthly-premium"
+                              contentText={isPDP ? <PdpMonthlyPremiumTooltip /> : <MonthlyPremiumTooltip />}
+                              customTopOffset={1.8}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </Col>
+                    <Col>
+                      {lisLevelValue && (
+                        <div>
+                          Extra Help{' '}
+                          <span
+                            data-test-id="summary__extra-help"
+                            className={isFastQueryLoading ? 'placeholder' : ''}
+                            css={`
+                              color: ${colors.gray7};
+                              font-weight: ${fontWeightBold};
+                            `}>
+                            {' '}
+                            Level {lisLevelValue}
+                          </span>
+                          <ExtraHelpTooltip />
+                        </div>
+                      )}
+                    </Col>
+                  </Row>
+                </Col>
+                <Col
+                  css={`
+                    flex: 1;
+                    border-right: 0;
+                  `}>
+                  {!memberSectionError && (
+                    <LabelValueList align="center">
+                      <LabelValueListItem
+                        label="Member name:"
+                        value={memberName}
+                        data-test-id="summary__member-name"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                      <LabelValueListItem
+                        label="Member ID:"
+                        value={planSummary?.memberNumber}
+                        data-test-id="summary__member-id"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                      {!isPreEffective && (
+                        <LabelValueListItem
+                          label="Coverage:"
+                          value={coverageDateString}
+                          data-test-id="summary__coverage-dates"
+                          isValueLoading={isFastQueryLoading}
+                        />
+                      )}
+                      {isGroupPlan && (
+                        <LabelValueListItem
+                          label="Group Number:"
+                          value={planSummary?.groupNumber}
+                          data-test-id="summary__member-groupid"
+                          isValueLoading={isFastQueryLoading}
+                        />
+                      )}
+                    </LabelValueList>
+                  )}
+                  {memberSectionError && (
+                    <PlanSummaryError
+                      title="Could not display"
+                      data-test-id="error-message"
+                      body="Sorry, we couldn't load your member information. Please refresh the page to to try again."
+                    />
+                  )}
+                </Col>
+              </Row>
+            ) : (
+              <Row
+                breakpoint={'abyssBreakpointsMd'}
+                css={`
+                  border-right: 0;
+                  border-bottom: 0;
+                `}>
+                <Col
+                  css={`
+                    border-right: 0;
+                    flex: 1.25;
+                  `}>
+                  {isPreEffective && (
+                    <Row
+                      css={`
+                        padding-bottom: 0.5rem;
+                      `}>
+                      <PreeffectiveMessage startDate={planSummary?.startDate} />
+                    </Row>
+                  )}
+                  <Row
+                    css={`
+                      padding-bottom: 0.5rem;
+                    `}>
+                    <H4 as="h2" data-test-id={'summary__your-plan'} className={!brandingName ? 'placeholder' : ''}>
+                      {brandingName || 'XXX XXXXXXX XXXXXXXXXX XXXXXXXX'}
+                    </H4>
+                  </Row>
+                  <Row
+                    css={`
+                      padding-bottom: 0.5rem;
+                    `}>
+                    <Col
+                      css={`
+                        padding-right: 1.26rem;
+                      `}>
+                      <H6
+                        as="h2"
+                        data-test-id={'summary__your-sub-plan'}
+                        className={!brandingSubName ? 'placeholder' : ''}>
+                        {brandingSubName || 'XXX XXXXXXX XXXXXXXXXX XXXXXXXX'}
+                      </H6>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col
+                      css={`
+                        padding-right: 1.26rem;
+                      `}>
+                      {hasPremiumPayments && +premium !== 0 && (
+                        <P
+                          className={premium === null ? 'placeholder' : ''}
+                          data-test-id="summary__monthly-premium-detail">
+                          Monthly Premium&nbsp;
+                          <span
+                            data-test-id="summary__monthly-premium"
+                            css={`
+                              color: ${colors.gray7};
+                              font-weight: ${fontWeightBold};
+                            `}>
+                            {premium !== null && formatCurrency(premium)}
+                          </span>
+                          {premium === null || +premium === 0 ? (
+                            <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                          ) : (
+                            <span>
+                              &nbsp;
+                              <TempoLink
+                                className={isSlowQueryLoading ? 'placeholder' : ''}
+                                css={`
+                                  margin-bottom: 1rem;
+                                  margin-top: 1.25rem;
+                                `}
+                                href={premiumPaymentLink}
+                                onClickTrackingData={{
+                                  clickName: 'Make-a-payment',
+                                  clickType: 'internal-cta',
+                                  clickElement: 'text',
+                                  clickDestination: premiumPaymentLink,
+                                }}>
+                                Make a payment
+                              </TempoLink>
+                            </span>
+                          )}
+                        </P>
+                      )}
+                    </Col>
+                  </Row>
+                  {lisLevelValue && (
+                    <Row>
+                      <Col>
+                        <div
+                          data-test-id="summary__extra-help-text"
+                          css={`
+                            > p {
+                              display: -webkit-box;
+                              > span {
+                                margin-right: 0.25rem;
+                              }
+                            }
+                          `}>
+                          <RichText v1 richTextTree={planSummary?.groupExtraHelpText} />
+                        </div>
+                      </Col>
+                      <Col></Col>
+                    </Row>
+                  )}
+                </Col>
+                <Col
+                  css={`
+                    flex: 1;
+                    border-right: 0;
+                  `}>
+                  {!memberSectionError && (
+                    <LabelValueList align="center">
+                      <LabelValueListItem
+                        label="Member name:"
+                        value={memberName}
+                        data-test-id="summary__member-name"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                      <LabelValueListItem
+                        label="Member ID:"
+                        value={planSummary?.memberNumber}
+                        data-test-id="summary__member-id"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                      <LabelValueListItem
+                        label="Group ID:"
+                        value={planSummary?.groupNumber}
+                        data-test-id="summary__member-groupid"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                      <LabelValueListItem
+                        label="Effective date:"
+                        value={startDate}
+                        data-test-id="summary__effective-date"
+                        isValueLoading={isFastQueryLoading}
+                      />
+                    </LabelValueList>
+                  )}
+                  {memberSectionError && (
+                    <PlanSummaryError
+                      title="Could not display"
+                      data-test-id="error-message"
+                      body="Sorry, we couldn't load your member information. Please refresh the page to to try again."
+                    />
+                  )}
+                </Col>
+              </Row>
+            )}
+            {isGroupPlan ? null : (
+              <DualStatusIndicator medicaidStatus={medicaidDualStatusCode} isPDP={isPDP} benefits={benefits} />
+            )}
+          </FloatingSplitCard>
+        )}
+        {yourPlanError && (
+          <PlanSummaryError
+            title="Could not display"
+            body="Sorry, we couldn't load your plan information. Please refresh the page to to try again."
+          />
+        )}
+      </StretchCenteredRow>
+    </>
+  )
+}
+
+const ShowToolTip = ({ planTypeDescription }) => (
+  <Tooltip
+    aria-label="More info about your plan"
+    contentTitle={planTypeDescription.find((x) => x.type === 'tooltip-title')?.children?.[0]?.text}
+    contentText={<RichText richTextTree={planTypeDescription.filter((x) => x.type !== 'tooltip-title')} />}
+    clickName="plan-name-tooltip"
+  />
+)
+
+const PreeffectiveMessage = ({ startDate }: any) => {
+  const formattedStartDate = dayjs.utc(startDate).format('MMMM D, YYYY')
+  return (
+    <P
+      css={`
+        color: ${colors.textDark};
+        font-weight: ${fontWeightBold};
+        font-family: ${fontFamilySans};
+      `}>
+      Your plan begins on {formattedStartDate}
+    </P>
+  )
+}
+
+export default PlanSummaryCard
