@@ -1,0 +1,429 @@
+import config from './config'
+import {
+  getContextArg,
+  loggedInMember,
+  profiles,
+  using,
+  hasSecureMessage,
+  hasIhr,
+  isActiveCombo,
+  determineFlexBalance,
+  CoverageType,
+  activeCoverages,
+  ucardEligibilities,
+} from '@uhc/graphql-api-common'
+import { otcResolvers } from '@uhc/mcare-api-common'
+import { addRider, removeRider } from './riderServices'
+import ucpResolvers from './ucp/resolvers'
+import dentalResolvers from './dental/resolvers'
+import { headerLogos } from './content-management/headerLogos'
+import { isCalpersGroup, isGroupPlan } from './group/utils'
+import { getLisLevel } from './LIS/getLisLevel'
+import { displayBrandName } from './obapi/obapiMnrHelpers'
+import {
+  getSelectedProfiles,
+  getActiveProfiles,
+  getUcpConsumerInfo,
+  withConsumerInfo,
+  ConsumerInformation,
+} from './ucp/ucpConsumerInfo'
+import { getMnrContextArg, hasMedicalPlan, getContractNumberFirstFive } from './utils'
+import { hasPremiumPayments } from './misc-resolvers'
+import {
+  excludingMedSupp,
+  isLifeMartOnlyEligible,
+  isVASEligible,
+  medSuppResolver,
+  useForMedSuppResolversOnly,
+} from './medsupp'
+import {
+  withPlanTypeCode,
+  isPDP,
+  isMA,
+  isTxErs,
+  ifGroupPlanRedesign,
+  isSSPPromise,
+  fitnessProgram,
+  isDSNP,
+  withOTCEligibilityForSolutranInfo,
+  withOTCEligibilityForFirstLineInfo,
+  withRenewActiveEligibleInfo,
+  isMAPD,
+  ifIndividualMAOrMAPD,
+  isTermed,
+  isPreEffective,
+  hasCoverage,
+} from './resolverUtilities'
+import planSummaryResolvers from './planSummaryResolvers'
+import benefitsResolvers from './benefitsResolvers'
+import memberResolvers from './memberResolvers'
+import mnrPfnyResolvers from './pfny'
+import { MnrGqlContext, PlanCategories } from './types'
+import { typeDefs } from './typeDefs'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { stitchSchemas } from '@graphql-tools/stitch'
+import v2schema from './v2/resolvers'
+import { withRewardsEligibilityInfo } from './ucp/ucpHealthWellness'
+import { MnrEligibility, PlanProfile } from '@uhc/common'
+import { getRideInfo } from './transportation'
+
+const medSuppExcludedResolvers = excludingMedSupp({
+  ...otcResolvers,
+  ...dentalResolvers,
+  ...ucpResolvers,
+  ...benefitsResolvers,
+})
+
+/***
+ *
+ * Warning: do not add any additional inline resolvers here.  Make sure any new resolvers are added in an existing resolvers file or create a new one.
+ *
+ */
+
+const resolvers = {
+  Mutation: {
+    addRider,
+    removeRider,
+  },
+  Query: {
+    consumerDetailsMnrEligibility: async (...args: any[]) => {
+      const context = getContextArg(args) as MnrGqlContext
+      const consumerDetails = (await getUcpConsumerInfo(context)) as ConsumerInformation
+      const getPlanProfileInfo = (plan: PlanProfile) => {
+        return {
+          businessType: plan?.businessType,
+          insuredPlanId: plan?.insuredPlanId,
+          employerGroupIndicator: plan?.employerGroupIndicator,
+          planCode: plan?.planCode,
+          cms_Contract_Num: plan?.cms_Contract_Num,
+          pbp_Number: plan?.pbp_Number,
+          segmentId: plan?.segmentId,
+          planStatus: plan?.planStatus,
+          planCategory: plan?.planCategory,
+          memberNumber: plan?.memberNumber,
+          planTypeCode: plan?.planTypeCode,
+          planStartDate: plan?.planStartDate,
+          planTerminatedDate: plan?.planTerminatedDate,
+          planName: plan?.planName,
+          groupNumber: plan?.groupNumber,
+          employerName: plan?.employerName,
+          accountId: plan?.accountId,
+          individualId: plan?.individualId,
+          goGreenIndicator: plan?.goGreenIndicator,
+          lineOfBusiness: plan?.lineOfBusiness,
+          productBrand: plan?.productBrand,
+          groupId: plan?.groupId,
+          masterGroupNo: plan?.masterGroupNo,
+          groupSiteId: plan?.groupSiteId,
+          employerId: plan?.employerId,
+          branchId: plan?.branchId,
+          address_Line1: plan?.address_Line1,
+          address_Line2: plan?.address_Line2,
+          state_CD: plan?.state_CD,
+          zip4: plan?.zip4,
+          zip5: plan?.zip5,
+          emailAddress: plan?.emailAddress,
+          displayPlanCode: plan?.displayPlanCode,
+          claimSystem: plan?.claimSystem,
+          planTypeName: plan?.planTypeName,
+          phcPlan: plan?.phcPlan,
+          usOtherTerritories: plan?.usOtherTerritories,
+          pharmacySaver: plan?.pharmacySaver,
+          preferredNetwork: plan?.preferredNetwork,
+          providerInformation: plan?.providerInformation,
+          contactUs: plan?.contactUs,
+          planCategoryId: plan?.planCategoryId,
+          temporaryIDCard: plan?.temporaryIDCard,
+          profileStartDate: plan?.profileStartDate,
+          rxBin: plan?.rxBin,
+          rxGroup: plan?.rxGroup,
+          rxPCN: plan?.rxPCN,
+          vasList: plan?.vasList,
+          dbError: plan?.dbError,
+          formularyId: plan?.formularyId,
+          enc_accountId: plan?.enc_accountId,
+          enc_individualId: plan?.enc_individualId,
+          enc_memberNumber: plan?.enc_memberNumber,
+          enc_medicareClaimNumber: plan?.enc_medicareClaimNumber,
+          premiumPayment: plan?.premiumPayment,
+          displayBrand: plan?.displayBrand,
+          epmpEnabledFlag: plan?.epmpEnabledFlag,
+          upg_account_id: plan?.upg_account_id,
+          employerGroup: plan?.employerGroup,
+          costSummaryExclusion: plan?.costSummaryExclusion,
+          snpType: plan?.snpType,
+          renewActiveEligible: plan?.renewActiveEligible,
+          sarsPlan: plan?.sarsPlan,
+          paymentMethod: plan?.paymentMethod,
+          basePremium: plan?.basePremium,
+          totalAmountDue: plan?.totalAmountDue,
+          otcCatalogEligibilityForSolutran: plan?.otcCatalogEligibilityForSolutran,
+          otcDebitcardEligibilityForSolutran: plan?.otcDebitcardEligibilityForSolutran,
+          otcEligibilityForSolutran: plan?.otcEligibilityForSolutran,
+          otcEligibilityForFirstLine: plan?.otcEligibilityForFirstLine,
+          medicareBeneficiaryId: plan?.medicareBeneficiaryId,
+          premium: plan?.premium,
+          certificateStateCode: plan?.certificateStateCode,
+          brandId: plan?.brandId,
+          coveredPackageBenefitsMap: plan?.coveredPackageBenefitsMap,
+          selectedPlan: plan?.selectedPlan,
+          insulinEligible: plan?.insulinEligible,
+          dentalEligible: plan?.dentalEligible,
+          riderflag: plan?.riderflag,
+          dualSNPSubType: plan?.dualSNPSubType,
+          mpin: plan?.mpin,
+          visionNetworkID: plan?.visionNetworkID,
+          visionEligible: plan?.visionEligible,
+          addressCity: plan?.addressCity,
+          dateOfBirth: plan?.dateOfBirth,
+          lastName: plan?.lastName,
+          middleName: plan?.middleName,
+          firstName: plan?.firstName,
+        } as PlanProfile
+      }
+      return {
+        userName: consumerDetails?.userName,
+        profileAddressCountyName: consumerDetails?.profileAddressCountyName,
+        profileAddressStateCode: consumerDetails?.profileAddressStateCode,
+        medicaidDualStatusCode: consumerDetails?.medicaidDualStatusCode,
+        planProfiles:
+          consumerDetails?.planProfiles?.map((plan) => {
+            return getPlanProfileInfo(plan)
+          }) || [],
+        preEffectivePlanProfiles:
+          consumerDetails?.preEffectivePlanProfiles?.map((plan) => {
+            return getPlanProfileInfo(plan)
+          }) || [],
+      } as MnrEligibility
+    },
+
+    shouldShowPlanSelector:
+      config.PLAN_SELECTOR_ACTIVE_DATE && new Date() >= config.PLAN_SELECTOR_ACTIVE_DATE
+        ? withConsumerInfo(
+            (consumerInfo) =>
+              //using deprecated fields because required for this situation
+              !!consumerInfo?.preEffectivePlanProfiles?.length &&
+              consumerInfo?.planProfiles?.some(
+                (p) => new Date(p.planStartDate).getFullYear() <= new Date().getFullYear(),
+              ),
+          )
+        : () => false,
+
+    isPDP,
+    isMAPD,
+
+    hasRx: (context: MnrGqlContext) => {
+      const isMAPDOrPDP = context.planCategory === PlanCategories.MAPD || context.planCategory === PlanCategories.PDP
+      return isMAPDOrPDP && !context.isTermed
+    },
+
+    isMA,
+    ucardEligibilities,
+
+    isPPO: (_x: any, _y: any, context: MnrGqlContext) =>
+      withPlanTypeCode(_x, _y, context)((ptc: string) => ptc.includes('PPO')),
+
+    isHMOPOS: (_x: any, _y: any, context: MnrGqlContext) =>
+      withPlanTypeCode(_x, _y, context)((ptc: string) => ptc.includes('POS')),
+
+    isHMOOnly: (_x: any, _y: any, context: MnrGqlContext) =>
+      withPlanTypeCode(_x, _y, context)((ptc: string) => ptc === 'HMO'),
+
+    selectedPlanYear: (...args: any) => getMnrContextArg(args).selectedPlanYear,
+
+    isShip: (...args: any[]) => {
+      const context = getContextArg(args)
+      // according to product as of 02/02/2024, it is safe to assume that all ship plans are med supp and all med supp plans are ship
+      return context.isMedSupp
+    },
+
+    isDSNP,
+
+    isMedSupp: (...args: any[]) => {
+      const context = getContextArg(args)
+      return context.isMedSupp
+    },
+    isMedSuppELE: useForMedSuppResolversOnly(withConsumerInfo((ci, ctx) => isVASEligible(ci, ctx))),
+    // isLifeMartOnlyEligible flag is temporary and will be removed once the feature is fully tested
+    isLifeMartOnlyEligible: useForMedSuppResolversOnly(withConsumerInfo((ci, ctx) => isLifeMartOnlyEligible(ci, ctx))),
+    isComboMedsupp: (...args: any[]) =>
+      withConsumerInfo((x, context) => {
+        if (isTermed(args)) return false
+        if (isPreEffective(args))
+          return (
+            x?.preEffectivePlanProfiles?.length > 1 &&
+            x?.preEffectivePlanProfiles?.some(
+              (profile: any) => profile?.planCategory === 'MEDICARE SUPPLEMENT' || profile?.planCategory === 'MEDSUPP',
+            )
+          )
+        return (
+          getActiveProfiles(x, context)?.length > 1 &&
+          getActiveProfiles(x, context)?.some(
+            (profile: any) => profile?.planCategory === 'MEDICARE SUPPLEMENT' || profile?.planCategory === 'MEDSUPP',
+          )
+        )
+      })(args),
+
+    hasShipPlan: withConsumerInfo((x, context) => {
+      const selectedProfiles = getSelectedProfiles(x, context)
+      return selectedProfiles?.filter((profile: any) => profile.businessType === 'SHIP')?.length > 0
+    }),
+
+    hasSspPlan: withConsumerInfo((x, context) => {
+      const selectedProfiles = getSelectedProfiles(x, context)
+      return selectedProfiles?.filter((profile: any) => profile.planCategory === 'SSP')?.length > 0
+    }),
+
+    isAarp: (...args: any[]) => {
+      const context = getContextArg(args)
+      return context.portalSource === 'aarp'
+    },
+
+    globalNavFpcAttributes: using(
+      profiles,
+      loggedInMember,
+    )((member) => {
+      const coverageType = member?.eligibility?.[0]?.memberHealthCoverage?.coverageType?.[0]
+      const coverageTypeCode = coverageType?.typeCode?.coverageTypeCode ?? null
+      const claimSystemTypeCode = coverageType?.claimSystemTypeCode ?? null
+      const eligibilitySystemTypeCode = coverageType?.eligibilitySystemTypeCode ?? null
+      const productCode = coverageType?.productCode ?? null
+      const sourceCode = member?.sourceCode ?? null
+      const coverageStartDate = coverageType?.coverageEffDateRange?.startDate ?? null
+      const coverageEndDate = coverageType?.coverageEffDateRange?.endDate ?? null
+      return {
+        sourceCode,
+        coverageTypeCode,
+        claimSystemTypeCode,
+        eligibilitySystemTypeCode,
+        productCode,
+        coverageStartDate,
+        coverageEndDate,
+      }
+    }),
+
+    showSubmitClaim: using(
+      profiles,
+      loggedInMember,
+    )((member) => {
+      const reimbursementLinkSuppressionInd =
+        member?.eligibility?.[0].memberHealthCoverage?.coverageType?.[0]?.reimbursementLinkSuppressionInd === 'true'
+      return !reimbursementLinkSuppressionInd
+    }),
+
+    isActiveCombo: using(profiles, loggedInMember)(isActiveCombo),
+
+    isCombo: (...args: any[]) =>
+      withConsumerInfo((x, context) => {
+        if (isTermed(args)) return x?.planProfiles?.filter?.((x) => x?.planStatus === 'TERMINATED')?.length > 1
+        else if (isPreEffective(args)) return x?.preEffectivePlanProfiles?.length > 1
+        return getActiveProfiles(x, context)?.length > 1
+      })(args),
+
+    isStandaloneSSP: withConsumerInfo((x, context) => {
+      const selectedProfiles = getSelectedProfiles(x, context)
+      return selectedProfiles?.length === 1 && selectedProfiles[0].planCategory === 'SSP'
+    }),
+
+    isSSP: isSSPPromise,
+
+    displayCostSummary: withConsumerInfo((x) => x.displayCostSummary),
+
+    isPreEffective,
+
+    isTermed,
+
+    portalSessionId: (...args: any[]) => (getContextArg(args) as MnrGqlContext).portalSessionId,
+
+    medicaidDualStatusCode: async (_x: any, _y: any, context: MnrGqlContext) => {
+      const consumerInfo = await getUcpConsumerInfo(context)
+      return consumerInfo?.medicaidDualStatusCode
+    },
+
+    isCalpersGroup: ifGroupPlanRedesign(isCalpersGroup((x) => x.includes('Rx072'))),
+
+    lisLevel: async (_x: any, _y: any, context: MnrGqlContext) => await getLisLevel(context),
+
+    permanentAddress: using(
+      profiles,
+      loggedInMember,
+    )((member) => {
+      return member?.demographics?.address.find((a: { addressType: string }) => a.addressType === 'PERMANENT')
+    }),
+
+    mailingAddress: using(
+      profiles,
+      loggedInMember,
+    )((member) => {
+      return member?.demographics?.address.find((a: { addressType: string }) => a.addressType === 'MAILING')
+    }),
+
+    hasMedicalCoverage: (...args: any[]) => {
+      const context = getContextArg(args)
+      const medicalPlan = hasMedicalPlan(context)
+      return !context.isTermed && medicalPlan
+    },
+
+    hasDentalPlan: async (...args: any[]) => await hasCoverage(CoverageType.DENTAL, ...args),
+    hasVisionCoverage: async (...args: any[]) => await hasCoverage(CoverageType.VISION, ...args),
+    hasBehavioralPlan: async (...args: any[]) => await hasCoverage(CoverageType.BEHAVIORAL, ...args),
+
+    hbpbId: (...args: any[]) => {
+      const context = getContextArg(args) as MnrGqlContext
+      const planId = context.planId
+      let contractNumber = ''
+      let pbpNumber = ''
+      let segmentId = ''
+      if (planId) {
+        contractNumber = getContractNumberFirstFive(context)
+        pbpNumber = planId.substring(5, 8)
+        segmentId = planId.substring(8)
+      }
+      return planId ? `${contractNumber}-${pbpNumber}-${segmentId}` : undefined
+    },
+
+    virtualVisitsAvailable: using(
+      profiles,
+      loggedInMember,
+      activeCoverages,
+    )((coverages) =>
+      coverages.some(
+        (coverage: any) =>
+          coverage.coverageType === CoverageType.MEDICAL &&
+          coverage?.coverageDetail?.designatedNetwork?.includes('DVCN'),
+      ),
+    ),
+
+    planCategory: (...args: any[]) => (getContextArg(args) as MnrGqlContext).planCategory,
+    isGroupPlan,
+    hasSecureMessage,
+    hasIhr,
+    hasPremiumPayments,
+    isTxErs,
+    displayBrandName,
+    headerLogos,
+    fitnessProgram,
+    medSupp: medSuppResolver,
+    flexBalance: determineFlexBalance,
+    member: memberResolvers.memberData().member,
+    ...mnrPfnyResolvers,
+    ...planSummaryResolvers,
+    ...medSuppExcludedResolvers,
+    isIncentivesEligible: withRewardsEligibilityInfo((x) => x?.isIncentivesEligible),
+    otcEligibilityForSolutran: ifIndividualMAOrMAPD(withOTCEligibilityForSolutranInfo),
+    otcEligibilityForFirstLine: ifIndividualMAOrMAPD(withOTCEligibilityForFirstLineInfo),
+    renewActiveEligible: withRenewActiveEligibleInfo,
+    transportation: async (...args: any[]) => await getRideInfo(getMnrContextArg(args)),
+  },
+}
+
+const v1schema = makeExecutableSchema({
+  typeDefs,
+  resolvers,
+})
+
+export default stitchSchemas({
+  subschemas: [v1schema, v2schema].map((s) => ({
+    schema: s,
+  })),
+})
