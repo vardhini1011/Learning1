@@ -1,0 +1,231 @@
+import { PdpPlanType } from './types'
+
+const ppo = (isRegional: boolean) => [
+  {
+    type: 'tooltip-title',
+    children: [
+      {
+        text: `Your plan is a Medicare Advantage Part C${
+          isRegional ? ' Regional' : ''
+        } Preferred Provider Organization (${isRegional ? 'R' : ''}PPO) plan.`,
+      },
+    ],
+  },
+  {
+    type: 'paragraph',
+    attributes: {
+      spacingBottom: true,
+    },
+    children: [
+      {
+        text: 'This plan has a network of quality doctors, hospitals, and other care providers, designed to help you get the care you need.',
+      },
+    ],
+  },
+  {
+    type: 'paragraph',
+    attributes: {
+      spacingBottom: true,
+    },
+    children: [
+      {
+        text: 'Take advantage of our network for your plan’s lowest out-of-pocket costs. You can also see out-of-network providers if they accept Medicare, but keep in mind your costs may be higher.',
+      },
+    ],
+  },
+  {
+    type: 'paragraph',
+    children: [
+      {
+        text: 'You can see providers outside our network if they accept Medicare, but your costs may be higher.',
+      },
+    ],
+  },
+]
+
+const planTypeDescriptions: any = {
+  HMO: [
+    {
+      type: 'tooltip-title',
+      children: [
+        {
+          text: 'Your plan is a Medicare Advantage Part C Health Maintenance Organization (HMO) plan.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'This plan has a network of quality doctors, hospitals, and other care providers, designed to help you get the care you need.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'To make sure your care is covered, always see providers in our network. Your plan does not cover care from outside our network.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          text: 'Your plan does not cover care from providers outside our network. You may have to pay the full cost for services received from an out-of-network provider.',
+        },
+      ],
+    },
+  ],
+  POS: [
+    {
+      type: 'tooltip-title',
+      children: [
+        {
+          text: 'Your plan is a Medicare Advantage Part C Health Maintenance Organization – Point of Service (HMO-POS) plan.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'This plan has a network of quality doctors, hospitals, and other care providers, designed to help you get the care you need.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'Take advantage of our network for your plan’s lowest out-of-pocket costs. For certain services, you can see out-of-network providers if they accept Medicare, but keep in mind your costs may be higher. See your Evidence of Coverage for a list of covered services.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          text: 'For certain services, you can see out-of-network providers if they accept Medicare, but your costs may be higher. See your Evidence of Coverage for a list of covered services.',
+        },
+      ],
+    },
+  ],
+  POS_DENTAL_ONLY: [
+    {
+      type: 'tooltip-title',
+      children: [
+        {
+          text: 'Your plan is a Medicare Advantage Part C Health Maintenance Organization – Point of Service (HMO-POS) plan.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'This plan has a network of quality doctors, hospitals, and other care providers, designed to help you get the care you need.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'Your plan does not cover medical care from providers outside our network. You may have to pay the full cost for medical services received from an out-of-network provider.',
+        },
+      ],
+    },
+  ],
+  PDP_SAVER: [
+    {
+      type: 'paragraph',
+      children: [
+        {
+          text: 'Saver Plus is designed for people who don’t take many prescription drugs and want low copays.',
+        },
+      ],
+    },
+  ],
+  PDP_PREFERRED: [
+    {
+      type: 'paragraph',
+      attributes: {
+        spacingBottom: true,
+      },
+      children: [
+        {
+          text: 'The Preferred plan is designed for those who want a plan with the most extensive drug coverage, and want access to a broad pharmacy network.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          text: 'This $0 deductible plan could save you money if you currently take many prescription drugs. Also offers predictable insulin copays for $35 or less.',
+        },
+      ],
+    },
+  ],
+  PDP_WALGREENS: [
+    {
+      type: 'paragraph',
+      children: [
+        {
+          text: 'Walgreens plan is designed for people who use fewer, primarily generic drugs, want a lower premium plan and can fill their prescriptions at Walgreens pharmacies.',
+        },
+      ],
+    },
+  ],
+}
+
+export const getPlanTypeDescription = (
+  planTypeCode: string,
+  isDentalOnlyPOS = false,
+  isRegionalPPO = false,
+  pdpPlanType?: PdpPlanType,
+) => {
+  if (pdpPlanType) {
+    if (pdpPlanType === PdpPlanType.PREFERRED) {
+      return planTypeDescriptions.PDP_PREFERRED
+    }
+    if (pdpPlanType === PdpPlanType.WALGREENS) {
+      return planTypeDescriptions.PDP_WALGREENS
+    }
+    if (pdpPlanType === PdpPlanType.SAVER) {
+      return planTypeDescriptions.PDP_SAVER
+    }
+  }
+
+  if (planTypeCode === 'HMO') {
+    return planTypeDescriptions[planTypeCode]
+  }
+  if (planTypeCode === 'PPO') {
+    return ppo(isRegionalPPO)
+  }
+  if (planTypeCode?.includes('POS')) {
+    return isDentalOnlyPOS ? planTypeDescriptions.POS_DENTAL_ONLY : planTypeDescriptions.POS
+  }
+
+  return null
+}
