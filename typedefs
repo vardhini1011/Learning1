@@ -1,0 +1,450 @@
+import { Ast, FlexBalance, OtcCardInfo, PfnyFlags, PlanProfile, MnrEligibility } from '@uhc/common'
+import { SyntheticEvent } from 'react'
+import {
+  BenefitDefinition,
+  BenefitDefinitions,
+  Networks,
+  PlanSummaryPcpFields,
+  PrescriptionDrugSummary,
+  DentalMaxDetails,
+  MedicalDeductibleDetails,
+  MedicalOopDetails,
+} from '@uhc/mcare-react'
+
+export type ApolloError = {
+  message: string
+  path: string[]
+  extensions?: {
+    code?: string
+  }
+}
+
+export type BenefitsContextQueryResultV2 = {
+  attributes: string[]
+}
+
+export type BenefitsContextQueryResult = {
+  consumerDetailsMnrEligibility: MnrEligibility
+  errors?: ApolloError[]
+  isMedSupp?: boolean
+  isDNSP: boolean
+  flexBalance?: FlexBalance
+  benefits: BenefitDefinitions
+  otcCardInformation: OtcCardInfo
+  planSummary?: PlanSummary
+  planTypeDescription?: Ast[]
+  ucpPlanBenefits?: UcpPlanBenefits
+  isMedSuppELE?: boolean
+  isLifeMartOnlyEligible?: boolean
+  isPPO?: boolean
+  isHMOPOS?: boolean
+  isHMOOnly?: boolean
+  selectedPlanYear?: number
+  isPreEffective?: boolean
+  isTermed?: boolean
+  portalSessionId?: string
+  hasSecureMessage?: boolean
+  hasIhr?: boolean
+  member?: MemberInfo
+  hasDentalClaims?: boolean
+  eocPdfLink?: string
+  cocPdfLink?: string
+  providerDirectoryLink?: string
+  vendorInformationSheet?: string
+  dentalFlyerLink?: string
+  lisPrescriptionDrugBenefits?: LISPrescriptionDrugBenefits
+  benefitsIndividualCtas: BenefitsUhcCtas
+  benefitsGroupCtas: BenefitsUhcCtas
+  content: Content
+  medicaidDualStatusCode: string
+  renewActiveCodes: RenewActiveCodes
+  medSupp: MedSupp
+  pfnyFlags?: PfnyFlags
+  v2: BenefitsContextQueryResultV2
+  hbpbId: string
+  transportation: Transportation
+}
+
+export type AtAGlance = {
+  memberName: string
+  memberId: string
+  extraHelpText: string
+  effectiveDate: string
+  monthlyPremium: string
+  groupId: string
+  planSubHeaderParent: string
+}
+
+export type AlertBanner = {
+  alertBannerContent: string
+}
+
+export type DisclaimersGroup = {
+  disclaimerContent: any
+}
+
+export type AnnualDeductibleAndMOOP = {
+  annualDeductibleHeaderParent: string
+  annualDeductibleHeader1Parent: string
+  annualDeductibleHeader2Parent: string
+  annualDeductibleContentParent: string
+  annualDeductibleContent1Parent: string
+  annualDeductibleContent2Parent: string
+  moopHeaderParent: string
+  moopHeader1Parent: string
+  moopHeader2Parent: string
+  moopContentParent: string
+  moopContent1Parent: string
+  moopContent2Parent: string
+  viewSpendingAndCostSummaryLabel: string
+  annualDeductibleMoopFooter: string
+}
+
+export type RenewActiveCodes = {
+  primaryCode: string
+  secondaryCodes: string[]
+  memberStatus: string
+}
+
+export type MedSuppPlan = {
+  stateCode: string
+  planCode: string
+  effectiveDate: string
+  startDate: string
+  stopDate: string
+  footnotes: string[]
+}
+
+export type MedSuppBenefits = {
+  unmappedBenefits: string[]
+  annualPlanDeductible: BenefitDefinition
+  hospitalDeductible: BenefitDefinition
+  inpatientHospital: BenefitDefinition
+  skilledNursing: BenefitDefinition
+  annualDeductible: BenefitDefinition
+  oopMax: BenefitDefinition
+  excessCharges: BenefitDefinition
+  primaryCare: BenefitDefinition
+  preventativeCare: BenefitDefinition
+  specialist: BenefitDefinition
+  specialistReferralRequired: BenefitDefinition
+  providerNetworkRequired: BenefitDefinition
+  annualExaminations?: BenefitDefinition
+  preventiveServices: BenefitDefinition
+  immunizations?: BenefitDefinition
+  urgentCare: BenefitDefinition
+  emergencyCare: BenefitDefinition
+  groundAmbulance: BenefitDefinition
+  airAmbulance: BenefitDefinition
+  foreignTravel: BenefitDefinition
+  ambulatorySurgical: BenefitDefinition
+  outpatientHospital: BenefitDefinition
+  mentalHealth: BenefitDefinition
+  lab: BenefitDefinition
+  diagnosticRadiology: BenefitDefinition
+  outpatientXRay: BenefitDefinition
+  durableMedical: BenefitDefinition
+  homeHealth: BenefitDefinition
+  preventiveHealth: BenefitDefinition
+  wisconsinMandates?: BenefitDefinition
+  medicalEmergency: BenefitDefinition
+  immunization: BenefitDefinition
+  cancerScreening: BenefitDefinition
+  diabeticEquipmentandSupplies: BenefitDefinition
+  scalpHairProsthesis: BenefitDefinition
+  hospitalStays: BenefitDefinition
+  medicalCare: BenefitDefinition
+  careReceived: BenefitDefinition
+  preventiveCare: BenefitDefinition
+  additionalBenefits: BenefitDefinition
+  outofPocketExpenses: BenefitDefinition
+  massachusettsMandate: BenefitDefinition
+  discountServices: BenefitDefinition
+}
+
+export type MedSuppPlanDocuments = {
+  benefitsTable: string
+}
+
+export type MedSuppPremiumDetails = {
+  monthlyPremium: string
+}
+
+export type MedSuppRiderDetails = {
+  availableRiders: [BenefitDefinition]
+}
+
+export type MedSuppFlags = {
+  isPlanCodeWithNursingValue: boolean
+  isStateCodeWithNursingValue: boolean
+}
+
+export type MedSupp = {
+  plan: MedSuppPlan
+  benefits: MedSuppBenefits
+  planDocuments: MedSuppPlanDocuments
+  premiumDetail: MedSuppPremiumDetails
+  riderDetails: MedSuppRiderDetails
+  medSuppFlags: MedSuppFlags
+}
+
+export type BenefitsUhcCtas = {
+  isUhcHearingAid: boolean
+  isUhcEyeWear: boolean
+  isUhcHearingExam: boolean
+  isFitbit: boolean
+  otcVendor?: 'FirstLine' | 'Solutran'
+  isNurseLine: boolean
+  isDental: boolean
+  isSolstice: boolean
+  isDina: boolean
+  isHearX: boolean
+}
+
+export type Content = {
+  alerts: Alert[]
+}
+
+export type Alert = {
+  title: string
+  content: any
+}
+
+export type MemberInfo = {
+  firstName: string
+  lastName: string
+  middleName: string
+  dateOfBirth: string
+  suffix: string
+  uuid: string
+}
+
+export type LISPrescriptionDrugBenefits = {
+  annualDeductible: number
+  catastrophicCoverageStart: number
+  standardRetailDrugCost: LISDrugCosts
+}
+
+export type LISDrugCosts = {
+  brandDrugCost: LISDrugCostDetail
+  genericDrugCost: LISDrugCostDetail
+}
+
+export type LISDrugCostDetail = {
+  drugTypeDescription: string
+  initialCoverage: string
+  coverageGap: string
+  catastrophic: string
+  isHMOPOS?: boolean
+}
+
+export type CategoryDetail = {
+  categoryName: string
+  benefitId: string
+  shortenedName: string
+}
+
+export type Category = {
+  categoryName: string
+  categoryAlias?: string
+  children: CategoryDetail[]
+  isMedical: boolean | null
+  sort: number | null
+}
+
+export type AutoCompleteEntry = {
+  name: string
+  benefitNameAlias: string
+  result: string
+}
+
+export type AutoCompleteResult = {
+  autoComplete?: AutoCompleteEntry[]
+}
+
+export type NetworkSection = {
+  networkTypeCode: string
+  networkTier: NetworkTier
+  networkTypeDescription: string[]
+  networkLanguageDescription: Ast[]
+}
+
+export type NetworkTier = {
+  tier: string
+  description: string
+}
+
+export type Address = {
+  address1: string
+  address2: string
+  city: string
+  state: string
+  zipCode: string
+}
+
+export type ProductDetails = {
+  startDate: Date
+  endDate?: Date
+}
+
+export type BenefitResult = {
+  benefitId: string
+  benefitName: string
+  benefitNameAlias: string
+  benefitSummaryText: Ast[]
+}
+
+export type SearchBenefitsResult = {
+  matchingPhrases: string[]
+  benefit: BenefitResult[]
+}
+
+export type SearchBenefitsResponse = {
+  benefitSearch: SearchBenefitsResult
+}
+
+export type PlanSummary = {
+  planCategory: string
+  alertBanner: Ast[] | null
+  groupExtraHelpText: Ast[] | null
+  planCategoryName: string
+  groupNumber: string
+  memberNumber: string
+  policyNumber: string
+  brandingName: string
+  startDate: Date
+  endDate: Date
+  monthlyPremium: string
+  premium: number
+  basePremium: number
+  premiumPayment: string
+  oop: OOP[]
+  deductible: Deductible[]
+  lisLevel: number
+  disclaimers: any[]
+  planTypeCode: string
+  encAccountId: string
+  groupPlanName: string
+  employerName: string
+  insuredPlanId: string
+  enterpriseId: string
+  nationalNetworkIndicator: boolean
+  memberAddress: MemberAddress
+  prescriptionDrugSummary: PrescriptionDrugSummary
+  dentalMaxDetails: DentalMaxDetails
+  medicalDeductibleDetails: MedicalDeductibleDetails
+  medicalOopDetails: MedicalOopDetails
+} & PlanSummaryPcpFields
+
+type MemberAddress = {
+  zipCode: string
+  state: string
+}
+
+export type OOP = {
+  inNetworkOop: SpendingDetails
+  outOfNetworkOop: SpendingDetails
+  combinedOop: SpendingDetails
+}
+
+export type Deductible = {
+  inNetworkDeductible: SpendingDetails
+  outOfNetworkDeductible: SpendingDetails
+  combinedDeductible: SpendingDetails
+}
+
+export type SpendingDetails = {
+  individualMaxAmount: number
+  individualAmountContent: string
+  header: string
+  content: Ast[] | null
+  moopHeader: string
+  moopContent: Ast[] | null
+}
+
+export type DeductibleDetails = {
+  deductibleAmount: string
+  isDeductibleCombined: boolean
+}
+
+export type MoopDetails = {
+  outOfPocketMaxAmount: string
+  isOutOfPocketMaxCombined: boolean
+}
+
+export const IN_NETWORK: Networks = 'In-Network'
+export const OUT_OF_NETWORK: Networks = 'Out-of-Network'
+
+export type UcpPlanBenefits = {
+  memberRider: MemberRider[]
+  splitTierPlan: boolean
+}
+
+export enum Lis4Type {
+  MAPD_NO_DEDUCTIBLE = 'MAPD_NO_DEDUCTIBLE',
+  MAPD_DEDUCTIBLE_TIERS_3_4_5 = 'MAPD_DEDUCTIBLE_TIERS_3_4_5',
+  MAPD_DEDUCTIBLE_TIERS_4_5_ONLY = 'MAPD_DEDUCTIBLE_TIERS_4_5_ONLY',
+  MAP_DEDUCTIBLE_ALL_TIERS = 'MAP_DEDUCTIBLE_ALL_TIERS',
+  NONE = 'NONE',
+}
+
+export type MemberRider = {
+  name: string
+  enableAdd: boolean
+  enableRemove: boolean
+  riderPlanId: string
+  riderGPSPlanCode: string
+  premium: number
+  marketingDescription: string
+  effective_date: string
+  pdfDocument: RiderPdfDoc[]
+}
+
+export type MappedMemberRider = {
+  name: string
+  otherRiderName?: string
+  testId: string
+  pdfLink: string
+  annualMax: string
+  premium: number
+  enableAdd: boolean
+  enableRemove: boolean
+  coverageStartDate: string
+  isPlatinum: boolean
+  rider: MemberRider
+}
+
+type RiderPdfDoc = {
+  link: string
+  language: string
+}
+// A purposely broad definition to avoid having to pass around loads of type params everywhere
+// and wrestle with differences between click handler definitions for different HTML elements
+export type OnClick = (event: SyntheticEvent) => void
+
+export type { Ast } from '@uhc/common'
+
+export type LegacyRedirectLocation = Pick<Location, 'href' | 'pathname' | 'hostname' | 'origin'>
+
+export type GetRedirectUrlArgs = {
+  location: LegacyRedirectLocation
+  mnrEligibility: MnrEligibility
+  mnrIndividualPolicies: string
+  basePath: string
+  sessionStorage: Storage
+  activePlanOverride?: PlanProfile
+  enableMedSuppPreEffectiveExp?: boolean
+}
+
+export type Transportation = {
+  rideEligibilityInfo: RideEligibilityInfo
+  isEligible: boolean
+  vendor: string
+}
+
+export type RideEligibilityInfo = {
+  allowedRides: number
+  usedRides: number
+  remainingRides: number
+  unlimitedRidesFlag: boolean
+}
