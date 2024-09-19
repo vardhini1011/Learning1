@@ -1,0 +1,36 @@
+export const isKelseySeyboldMember = (member: MemberProfile) => {
+  const kelseySeyboldProductIds = [
+    'B0TX0015',
+    'B0TX0015',
+    'B0TX0016',
+    'B0TX0015',
+    'S0TX0041',
+    'S0TX0041',
+    'S0TX0045',
+    'S0TX0041',
+    'S0TX0042',
+    'S0TX0043',
+    'S0TX0044',
+    'G0TX0015',
+    'G0TX0015',
+    'G0TX0016',
+    'G0TX0015',
+  ]
+  const kelseySeyboldProductIdsPY25 = [
+    'DLBTX001',
+    'DLBTX002',
+    'DLGTX001',
+    'DLGTX002',
+    'DLSTX001',
+    'DLSTX002',
+    'DLSTX003',
+    'DLSTX004',
+    'DLSTX005',
+  ]
+  const coverageDetail = member.eligibility[0]?.memberHealthCoverage.coverageType[0]
+  const startDate = getStartDate(coverageDetail)
+  const kelseySeyboldProductIdsToUse =
+    startDate && startDate.getFullYear() === 2025 ? kelseySeyboldProductIdsPY25 : kelseySeyboldProductIds
+  const memberProductId = getMedicalCoverage(member)?.productID
+  return kelseySeyboldProductIdsToUse.includes(memberProductId)
+}
