@@ -34,3 +34,77 @@ export const isKelseySeyboldMember = (member: MemberProfile) => {
   const memberProductId = getMedicalCoverage(member)?.productID
   return kelseySeyboldProductIdsToUse.includes(memberProductId)
 }
+Here are the possible ways to handle the issue of extracting the year from a date and ensuring time zone consistency. For each method, I’ll explain the advantages, disadvantages, and appropriateness for a healthcare application that is used across different time zones.
+
+### 1. **Using `getFullYear()` (Default Method)**
+   - **How It Works**: `getFullYear()` returns the year based on the local time zone where the code is running.
+   - **Advantage**:
+     - Simple and built-in.
+     - Works fine if the date is always provided in the local time zone and you are only dealing with local scenarios.
+   - **Disadvantage**:
+     - **Time Zone Sensitivity**: May cause issues if the application runs in multiple time zones, as it depends on the user's system clock.
+     - Can result in an off-by-one error when a date near midnight gets interpreted differently in different time zones.
+   - **Appropriateness**: Not suitable for healthcare applications running in multiple time zones, as health data is sensitive and should not depend on local device time settings.
+
+### 2. **Using `getUTCFullYear()`**
+   - **How It Works**: `getUTCFullYear()` returns the year in Coordinated Universal Time (UTC), avoiding time zone differences.
+   - **Advantage**:
+     - Avoids local time zone issues, making the date consistent regardless of the user’s time zone.
+     - Built-in and easy to use without external dependencies.
+   - **Disadvantage**:
+     - If you need to handle local time zones (like for patients in different regions), this may not reflect their local context accurately.
+     - UTC might not align with all health-related business rules, which could be region-specific.
+   - **Appropriateness**: Suitable when you want to normalize all date calculations across time zones. For healthcare, it ensures consistency, especially if the business logic revolves around system-wide time (e.g., centralized servers).
+
+### 3. **Normalizing Dates by Setting Time to Midnight**
+   - **How It Works**: Create a normalized `Date` object where the time is set to midnight to eliminate the influence of time zone offsets.
+   - **Advantage**:
+     - Ensures consistency by focusing only on the year and date while ignoring hours, minutes, and seconds.
+     - Reduces the chance of date misinterpretation due to time zone differences.
+   - **Disadvantage**:
+     - Still relies on local time zone settings for the year calculation.
+     - A bit more complex than using simple `Date` methods.
+   - **Appropriateness**: This can be useful if you want to remove time precision from the comparison but still rely on local time. Could work for healthcare but may not be the most robust approach when time zones play a significant role.
+
+### 4. **Using ISO Date Strings and Parsing the Year**
+   - **How It Works**: Convert the date to an ISO string (`toISOString()`), which is always in UTC, and then slice the year part from the string.
+   - **Advantage**:
+     - **Time Zone Agnostic**: The `toISOString()` method provides a reliable UTC representation of the date.
+     - Ensures no time zone issues and isolates the year component easily.
+   - **Disadvantage**:
+     - Not as intuitive as using native date methods.
+     - Parsing strings is a workaround and not always the cleanest solution.
+   - **Appropriateness**: Suitable for healthcare applications, as ISO 8601 format guarantees that the date is correctly handled in UTC, ensuring no time zone discrepancies.
+
+### 5. **Using Libraries like `dayjs` or `date-fns`**
+   - **How It Works**: Use third-party libraries to handle dates. For example, `dayjs` allows you to manage dates and times easily with various plugins, including UTC and time zone support.
+   - **Advantage**:
+     - **Comprehensive Time Zone Support**: These libraries provide easy handling of both local and UTC time zones.
+     - **More Readable and Flexible**: These libraries are well-documented and simplify complex date operations. They also allow for the easy conversion of dates across different time zones.
+     - Handles edge cases like leap years, daylight saving time, and locale-specific calendars.
+   - **Disadvantage**:
+     - **Additional Dependency**: You need to include an external library, which increases the bundle size slightly.
+     - Slight learning curve if you're unfamiliar with these libraries.
+   - **Appropriateness**: **Highly appropriate for healthcare applications** where time zone consistency and flexibility are essential. These libraries offer robust date handling capabilities that ensure reliability across different regions and time zones.
+
+### 6. **Storing and Working with Dates in UTC**
+   - **How It Works**: Store all dates in UTC format in the backend and make sure to operate on them in UTC at the frontend.
+   - **Advantage**:
+     - **Absolute Time Consistency**: Ensures that all times and dates are stored, transferred, and processed in the same format (UTC), eliminating time zone issues.
+     - Easier debugging and data tracking as you avoid local time zone confusion.
+   - **Disadvantage**:
+     - **Localization Required**: You may need to convert UTC times to local times for display purposes, depending on where the user is located.
+     - Adds some complexity for the frontend if local times are important to users.
+   - **Appropriateness**: **Highly appropriate for healthcare**, as patient health records often need a centralized time reference (UTC), while being flexible enough to convert for regional reports.
+
+### Recommendations for a Healthcare Application
+
+- **Best Practice**: Use **UTC-based methods** (like `getUTCFullYear()`) or date libraries (like `dayjs` or `date-fns`) to ensure consistent handling of dates across time zones.
+  - Healthcare systems involve sensitive, time-based records (e.g., appointments, medication schedules), and accuracy is paramount. Time zones should not interfere with date calculations, and UTC ensures a unified approach.
+  - If the application requires users to see local times, libraries like `dayjs` provide a flexible approach to handle both UTC and local time zones effectively.
+
+- **Most Appropriate Approach**: 
+  - **`getUTCFullYear()`** is simple and effective for basic needs, ensuring no local time zone interference.
+  - **Libraries like `dayjs`** are better if you need advanced features such as handling multiple time zones, daylight savings, or converting between local and UTC times. This would be the best choice for healthcare, as it handles complex date operations reliably.
+
+Would you like to explore one of these options in more detail or need code examples for your application?
