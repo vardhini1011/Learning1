@@ -1,0 +1,447 @@
+import Head from 'next/head'
+import styled from 'styled-components'
+import {
+  abyssBreakpointsMd,
+  H2,
+  H6,
+  LayoutWrapper,
+  SrOnlySpan,
+  StretchCenteredRow,
+  TempoLink,
+  usePageLoadTracking,
+} from '@uhc/react-common'
+import { HeartSvg } from '@uhc/icons'
+import { pixelsToRem, colors } from '@uhc/common'
+import { SearchBar, StickyNav, Disclaimers } from '../../components'
+import { useGlobalContext, useLocale, useQuery } from '../../hooks'
+import benefitsSummaryQuery, { BenefitsSummaryQuery } from '../../queries/benefitsSummaryQuery'
+import planDocumentsQuery from '../../queries/planDocumentsQuery'
+import { CoverageStatus, CoverageType, Member } from '../../types'
+import CommonQuestions from './common-questions'
+import Dental from './dental/dental'
+import MedicalCard from './medical-card'
+import Mental from './mental'
+import { AdditionalBenefitsSection } from '../../components/AdditionalBenefits'
+import PlanDocuments from './plan-documents'
+import DsnpMedicalSection from './dsnpMedical'
+import RxSection from './rx'
+import DSNPDentalSection from './dental/dsnpDental'
+import DsnpVisionSection from './vision/DsnpVisionSection'
+import DsnpHearingSection from './hearing'
+import FitnessSection from './fitness'
+import OtcSection from './otc'
+import DsnpPersSection from './pers'
+import DsnpMealsSection from './meals'
+import DsnpChiropracticSection from './chiropractic'
+import config from '../../config'
+import AtAGlanceSection from '../../components/AtAGlanceSection'
+import CnsHomeSupportSection from '../../components/HomeSupportSection'
+import DsnpAcupunctureRoutineSection from './acupuncture'
+import { TransportationDsnpSection, TransportationMedicaidSection } from './transportation'
+import Vision from './vision/vision'
+import { useFlags } from 'launchdarkly-react-client-sdk'
+
+export default function BenefitsOverviewPage() {
+  usePageLoadTracking({ pageName: 'Overview' })
+
+  const [locale] = useLocale()
+  const { enablePsxDsnp, enablePsxMedicaid} = useFlags()
+
+  const {
+    data: benefitsSummaryData,
+    errors: benefitsSummaryErrors,
+    isLoading: isBenefitsSummaryLoading,
+  } = useQuery<BenefitsSummaryQuery>(benefitsSummaryQuery, 'benefitsSummary')
+
+  const {
+    errors: planDocumentsErrors,
+    data: planDocumentsData,
+    retry: retryPlanDocuments,
+  } = useQuery<{
+    member: Pick<Member, 'planDocuments'>
+  }>(planDocumentsQuery, 'planDocuments')
+
+  const { member, isFastQueryLoading, benefits, medicareDocs, planSummary, transportation } = useGlobalContext()
+
+  const {
+    medicalRoutineTransportation,
+    comprehensiveDentalMedicareCovered,
+    medicalDeductible,
+    medicalOopMax,
+    homeSupportServices,
+    prescriptionDrugCatastrophic,
+    fitness,
+    hearingExam,
+    dental,
+    medicalChiropracticRoutineVisits,
+    meals,
+    otc,
+    eyeExam,
+    medicalAcupuncture,
+    pers,
+  } = benefits ?? {}
+  const homeSupportTitle = homeSupportServices?.title
+
+  const { medicalCoverage, coverages } = member ?? {}
+  const showCurrentExperience = medicalCoverage?.planStartDate?.includes('2022') || member?.isDSNPLookAlike
+  const preEffective = medicalCoverage?.status === CoverageStatus.PREEFFECTIVE
+  const memberCoverages = coverages ?? []
+  const isTerminated = memberCoverages.every((coverage) => coverage.status === CoverageStatus.TERMINATED)
+
+  const { planDocuments } = planDocumentsData?.member ?? {}
+  const hasPlanDocuments =
+    medicareDocs ||
+    planDocuments?.memberHandbooks?.length ||
+    planDocuments?.evidencesOfCoverage?.length ||
+    planDocuments?.otherDocuments?.length
+  const hasPlanDocumentsError = !medicareDocs && planDocumentsErrors?.length > 0
+
+  // If coverage is terminated, return an empty array
+
+  const coverageSections = isTerminated ? [] : getCoverageSections(member)
+
+  const shouldSuppressSearch = Boolean(member?.isBehavioralHealthOnly)
+
+  //check if medicare-dental eligible
+  const isMedicareCoveredDental = !!comprehensiveDentalMedicareCovered?.title
+
+  const hasTransportation = !!medicalRoutineTransportation?.title && !!config?.featureFlags?.SHOW_ROUTINE_TRANSPORTATION
+  const { costShare: transportationCostShare, showMedicaidRedesign } = transportation ?? {}
+  const showTransportationMedicaidRedesign = showMedicaidRedesign && transportationCostShare?.length
+  const transportationMedicaid = showTransportationMedicaidRedesign
+    ? [
+        {
+          children: <TransportationMedicaidSection />,
+          coverageType: CoverageType.TRANSPORTATION,
+          key: 'transportation',
+          title: 'Transportation',
+        },
+      ]
+    : []
+
+  const { planPrograms } = benefitsSummaryData ?? {}
+  const hasPlanPrograms = planPrograms?.length > 0
+
+  const additionalBenefits =
+    preEffective || isTerminated || (!isBenefitsSummaryLoading && !hasPlanPrograms)
+      ? []
+      : [
+          {
+            key: 'additional-benefits',
+            title: 'Additional benefits',
+            children: (
+              <AdditionalBenefitsSection
+                data={planPrograms}
+                isError={benefitsSummaryErrors?.find((error) => error?.path?.includes('planPrograms'))}
+                isLoading={isBenefitsSummaryLoading}
+              />
+            ),
+          },
+        ]
+
+  const DSNPNavSections = [
+    {
+      coverageType: CoverageType.MEDICAL,
+      title: 'Medical',
+      key: 'medical',
+      children: <DsnpMedicalSection />,
+      isHidden: !medicalDeductible || !medicalOopMax,
+    },
+    {
+      coverageType: CoverageType.RX,
+      title: 'Prescription drug',
+      key: 'rx',
+      children: <RxSection />,
+      isHidden: !prescriptionDrugCatastrophic?.title,
+    },
+    {
+      coverageType: CoverageType.DENTAL,
+      title: 'Dental',
+      key: 'dental',
+      children: <DSNPDentalSection goToIngress={enablePsxDsnp} lob="cns" />,
+      // @todo - need to update logic for 2024 dental here add in comprehensive maybe preventative???
+      isHidden: !dental?.title && !isMedicareCoveredDental,
+    },
+    {
+      coverageType: CoverageType.VISION,
+      title: 'Vision',
+      key: 'vision',
+      children: <DsnpVisionSection goToIngress={enablePsxDsnp} lob="cns" />,
+      isHidden: !eyeExam?.title,
+    },
+    {
+      coverageType: CoverageType.HEARING,
+      title: 'Hearing',
+      key: 'hearing',
+      children: <DsnpHearingSection />,
+      isHidden: !hearingExam?.title,
+    },
+    {
+      coverageType: CoverageType.FITNESS,
+      title: 'Fitness',
+      key: 'fitness',
+      children: <FitnessSection />,
+      isHidden: !fitness?.title,
+    },
+    // we no longer have this benefit as of 2024
+    // {
+    //   coverageType: CoverageType.FLEX,
+    //   title: flexTitle,
+    //   key: 'flex',
+    //   children: <CnsFlexSection />,
+    //   isHidden: !flexTitle,
+    // },
+    {
+      coverageType: CoverageType.OTC,
+      title: 'Over-the-counter (OTC) benefit',
+      key: 'otc',
+      children: <OtcSection />,
+      isHidden: !otc?.title,
+    },
+    {
+      coverageType: CoverageType.TRANSPORTATION,
+      title: 'Routine transportation',
+      key: 'routine-transportation',
+      children: <TransportationDsnpSection />,
+      isHidden: !hasTransportation,
+    },
+    {
+      coverageType: CoverageType.CHIROPRACTIC,
+      title: 'Routine chiropractic services',
+      key: 'routine-chiropractic-services',
+      children: <DsnpChiropracticSection />,
+      isHidden: !medicalChiropracticRoutineVisits?.title,
+    },
+    {
+      coverageType: CoverageType.ACUPUNCTUREROUTINE,
+      title: 'Routine acupuncture',
+      key: 'routine-Acupuncture-services',
+      children: <DsnpAcupunctureRoutineSection />,
+      isHidden: !medicalAcupuncture?.title,
+    },
+    {
+      coverageType: CoverageType.PERS,
+      title: 'Personal Emergency Response System (PERS)',
+      key: 'pers',
+      children: <DsnpPersSection />,
+      isHidden: !pers?.title,
+    },
+    {
+      coverageType: CoverageType.MEALS,
+      title: 'Meals',
+      key: 'meals',
+      children: <DsnpMealsSection />,
+      isHidden: !meals?.title,
+    },
+    {
+      coverageType: CoverageType.HOME_SUPPORT,
+      title: homeSupportTitle,
+      key: 'homeSupport',
+      children: <CnsHomeSupportSection />,
+      isHidden: !homeSupportTitle,
+    },
+  ]
+  const navSections = [
+    {
+      key: 'benefits',
+      title: 'Benefits',
+      children: (
+        <BenefitsHeader
+          {...{ isFastQueryLoading }}
+          hasBenefitsData={!!member?.hasBenefitsData}
+          shouldSuppressSearch={shouldSuppressSearch}
+        />
+      ),
+      subSections: [...coverageSections, ...transportationMedicaid, ...additionalBenefits],
+      suppressBottomBorder: locale !== 'en-US',
+      suppressGoToTop: locale !== 'en-US',
+      isHidden: isTerminated || (member?.isDSNP && !showCurrentExperience) || member?.isDSNP === undefined,
+    },
+    {
+      title: 'Plan Documents',
+      key: 'plan-documents',
+      children: (
+        <PlanDocuments
+          isLoading={!hasPlanDocuments}
+          isError={!hasPlanDocuments ? false : hasPlanDocumentsError}
+          planDocuments={planDocumentsData?.member?.planDocuments}
+          medicareDocs={medicareDocs}
+          retry={retryPlanDocuments}
+        />
+      ),
+      isHidden: !hasPlanDocuments && !isTerminated,
+    },
+    // Edge case: hide common questions if there is no data or isTerminated, but show loading state
+    {
+      key: 'common-questions',
+      title: 'Common questions',
+      children: (
+        <CommonQuestions
+          data={benefitsSummaryData?.commonQuestionsAndAnswers}
+          isError={benefitsSummaryErrors?.find((error) => error?.path?.includes('commonQuestionsAndAnswers'))}
+          isLoading={isBenefitsSummaryLoading}
+        />
+      ),
+      isHidden:
+        !member ||
+        isTerminated ||
+        (!isBenefitsSummaryLoading && !benefitsSummaryData?.commonQuestionsAndAnswers?.length),
+    },
+  ]
+
+  return (
+    <>
+      <Head>
+        <title>MyUHC - Coverage & Benefits | UnitedHealthcare</title>
+      </Head>
+      <div role="status">
+        {isBenefitsSummaryLoading ? (
+          <SrOnlySpan data-test-id="benefits-content-loading">Benefits content loading...</SrOnlySpan>
+        ) : (
+          <SrOnlySpan data-test-id="benefits-content-loaded">Benefits content loaded</SrOnlySpan>
+        )}
+      </div>
+      {/*
+        ***important****
+        the hidden div below is necessary for some unknown reason - there is some script running that wants to do something
+        with a data key of benefits and because we are hiding the benefits nav section for some members it is causing a
+        runtime error - we should figure out the underlying cause but for now the app will error without this div
+      */}
+      <div
+        data-key="benefits"
+        aria-hidden={true}
+        css={`
+          display: none;
+        `}>
+        <div></div>
+      </div>
+      <AtAGlanceSection
+        benefitsSummaryData={benefitsSummaryData}
+        benefitsSummaryErrors={benefitsSummaryErrors}
+        isBenefitsSummaryLoading={isBenefitsSummaryLoading}
+      />
+      <StretchCenteredRow
+        css={`
+          padding: 2rem 1.5rem 0;
+          border-top: ${pixelsToRem(1)} solid ${colors.gray4};
+          ${abyssBreakpointsMd} {
+            padding-top: 2.5rem;
+          }
+        `}>
+        <LayoutWrapper
+          // Overriding the padding to zero
+          css={`
+            padding: 0;
+          `}>
+          <StickyNav
+            isReadyToScroll={!isFastQueryLoading && !isBenefitsSummaryLoading}
+            navSections={
+              !showCurrentExperience && member?.isDSNP
+                ? [...DSNPNavSections.filter((x) => !x.isHidden), ...navSections.filter((x) => !x.isHidden)]
+                : navSections.filter((x) => !x.isHidden)
+            }
+            placeholderNavSections={coverageNavSections}
+            showPlaceholder={coverages === undefined || member?.isDSNP === undefined}
+          />
+          <H6
+            as="small"
+            css={`
+              padding: 32px 16px;
+              text-align: center;
+              display: block;
+            `}>
+            This page contains PDF documents (Portable Document Format). PDF files can be viewed with Adobe Reader. If
+            you don&apos;t already have this viewer, download for free at{' '}
+            <TempoLink
+              css={`
+                font-size: inherit;
+              `}
+              externalLink
+              href="https://www.adobe.com/"
+              onClickTrackingData={{
+                clickName: 'get-adobe-reader',
+                clickType: 'exit',
+                clickElement: 'text',
+                clickDestination: 'https://www.adobe.com/',
+              }}>
+              Adobe.com
+            </TempoLink>
+          </H6>
+        </LayoutWrapper>
+      </StretchCenteredRow>
+      <Disclaimers disclaimers={planSummary?.disclaimers} />
+    </>
+  )
+}
+
+// other components and constants
+const IconHeading = styled.div`
+  align-items: center;
+  display: flex;
+  padding-bottom: 32px;
+  svg {
+    flex-shrink: 0;
+    margin-right: 24px;
+  }
+`
+const BenefitsHeader = ({
+  isFastQueryLoading,
+  hasBenefitsData,
+  shouldSuppressSearch,
+}: {
+  isFastQueryLoading: boolean
+  hasBenefitsData: boolean
+  shouldSuppressSearch: boolean
+}) => (
+  <>
+    <IconHeading>
+      <HeartSvg size="xl" />
+      <H2>Benefits</H2>
+    </IconHeading>
+    {!shouldSuppressSearch && (isFastQueryLoading || hasBenefitsData) && <SearchBar />}
+  </>
+)
+
+const getCoverageSections = (member: Member) => {
+  const { coverages, productIds } = member ?? {}
+
+  const filteredSections = coverages
+    ? coverageNavSections.filter(({ coverageType, productId }) => {
+        if (productIds?.includes(productId)) return true
+
+        return coverages.find(
+          (coverage) => coverage.status !== CoverageStatus.TERMINATED && coverage.typeCode.desc === coverageType,
+        )
+      })
+    : coverageNavSections.filter((section) => section.coverageType === CoverageType.MEDICAL)
+
+  return filteredSections?.map(({ coverageType: _, ...sectionConfig }) => sectionConfig)
+}
+const {enablePsxMedicaid} = useFlags();
+const coverageNavSections = [
+  {
+    coverageType: CoverageType.MEDICAL,
+    title: 'Medical',
+    key: 'medical',
+    children: <MedicalCard goToIngress={enablePsxMedicaid} />,
+  },
+  {
+    coverageType: CoverageType.BEHAVIORAL_HEALTH,
+    productId: 'LAWW',
+    title: 'Mental and behavioral health',
+    key: 'behavioral-health',
+    children: <Mental />,
+  },
+  {
+    coverageType: CoverageType.DENTAL,
+    title: 'Dental',
+    key: 'dental',
+    children: <Dental />,
+  },
+  {
+    coverageType: CoverageType.VISION,
+    title: 'Vision',
+    key: 'vision',
+    children: <Vision />,
+  },
+]
